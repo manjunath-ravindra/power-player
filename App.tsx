@@ -38,14 +38,14 @@ const HeaderButtons = ({ navigation }: { navigation: any }) => {
         <Icon 
           name={theme.mode === 'light' ? 'dark-mode' : 'light-mode'} 
           size={24} 
-          color="#007AFF" 
+          color={theme.colors.primary} 
         />
       </TouchableOpacity>
       <TouchableOpacity
         style={{ marginRight: 16 }}
         onPress={() => navigation.navigate('Settings')}
       >
-        <Icon name="settings" size={24} color="#007AFF" />
+        <Icon name="settings" size={24} color={theme.colors.primary} />
       </TouchableOpacity>
     </>
   );
@@ -68,35 +68,61 @@ const App = () => {
   }, []);
 
   return (
-    <>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
-      <SettingsProvider>
-        <ThemeProvider>
-          <NavigationContainer
-          ref={navigationRef}
-          onStateChange={(state) => {
-            // Ensure status bar is visible when not in video player
-            const currentRoute = state?.routes[state.index];
-            if (currentRoute?.name !== 'VideoPlayer') {
-              StatusBar.setHidden(false);
-            }
-          }}
-        >
-          <Stack.Navigator initialRouteName="MediaLibrary">
-            <Stack.Screen 
-              name="MediaLibrary" 
-              component={MediaLibraryScreen} 
-              options={({ navigation }) => ({
-                title: 'Media Library',
-                headerRight: () => <HeaderButtons navigation={navigation} />,
-              })}
-            />
-            <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
-          </Stack.Navigator>
-        </NavigationContainer>
+    <SettingsProvider>
+      <ThemeProvider>
+        <AppContent navigationRef={navigationRef} />
       </ThemeProvider>
     </SettingsProvider>
+  );
+};
+
+// Separate component to access theme context
+const AppContent = ({ navigationRef }: { navigationRef: any }) => {
+  const { theme } = useTheme();
+
+  return (
+    <>
+            <StatusBar 
+        barStyle={theme.mode === 'light' ? 'dark-content' : 'light-content'} 
+        backgroundColor="transparent" 
+        translucent={true} 
+      />
+      <NavigationContainer
+        ref={navigationRef}
+        onStateChange={(state) => {
+          // Ensure status bar is visible when not in video player
+          const currentRoute = state?.routes[state.index];
+          if (currentRoute?.name !== 'VideoPlayer') {
+            StatusBar.setHidden(false);
+          }
+        }}
+      >
+        <Stack.Navigator 
+          initialRouteName="MediaLibrary"
+          screenOptions={({ route }) => {
+            return {
+              headerStyle: {
+                backgroundColor: theme.colors.background,
+              },
+              headerTintColor: theme.colors.text,
+              headerTitleStyle: {
+                color: theme.colors.text,
+              },
+            };
+          }}
+        >
+          <Stack.Screen 
+            name="MediaLibrary" 
+            component={MediaLibraryScreen} 
+            options={({ navigation }) => ({
+              title: 'Media Library',
+              headerRight: () => <HeaderButtons navigation={navigation} />,
+            })}
+          />
+          <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+        </Stack.Navigator>
+      </NavigationContainer>
     </>
   );
 };

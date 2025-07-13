@@ -23,6 +23,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import brightnessManager from '../utils/brightnessManager';
 import EmptyState from '../components/EmptyState';
 import { createThumbnail } from 'react-native-create-thumbnail';
+import MediaMeta from 'react-native-media-meta';
 
 // Extend RootStackParamList to allow path param for MediaLibrary
 export type MediaLibraryParamList = {
@@ -59,6 +60,19 @@ export type VideoFile = {
   resolution?: string;
   duration?: string;
   thumbnailUri?: string;
+};
+
+const formatDuration = (ms?: number | null): string => {
+  if (!ms || isNaN(ms)) return 'Unknown';
+  const totalSec = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSec / 3600);
+  const min = Math.floor((totalSec % 3600) / 60);
+  const sec = totalSec % 60;
+  if (hours > 0) {
+    return `${hours}:${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  } else {
+    return `${min}:${sec.toString().padStart(2, '0')}`;
+  }
 };
 
 const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -187,6 +201,14 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
                   // Thumbnail generation failed, fallback to icon
                   thumbnailUri = undefined;
                 }
+                // Fetch video duration using react-native-media-meta
+                let durationMs: number | null = null;
+                try {
+                  const meta = await MediaMeta.get(item.path);
+                  durationMs = meta.duration ?? null;
+                } catch (metaErr) {
+                  durationMs = null;
+                }
                 videos.push({
                   name: item.name,
                   path: item.path,
@@ -194,7 +216,7 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
                   fileSize,
                   lastModified,
                   resolution: 'Unknown',
-                  duration: 'Unknown',
+                  duration: formatDuration(durationMs),
                   thumbnailUri,
                 });
               } catch (e) {

@@ -24,6 +24,12 @@ import { StackActions } from '@react-navigation/native';
 
 // Extend MediaLibraryParamList to include Settings
 export type AppStackParamList = MediaLibraryParamList & {
+  VideoPlayer: {
+    path: string;
+    name: string;
+    videoList?: { path: string; name: string }[];
+    videoIndex?: number;
+  };
   Settings: undefined;
 };
 

@@ -13,19 +13,25 @@ import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import brightnessManager from '../utils/brightnessManager';
 
+export type VideoListItem = { path: string; name: string };
 export type RootStackParamList = {
   MediaLibrary: { resetToRoot?: boolean; showFilters?: boolean } | undefined;
-  VideoPlayer: { path: string; name: string };
+  VideoPlayer: {
+    path: string;
+    name: string;
+    videoList?: VideoListItem[];
+    videoIndex?: number;
+  };
 };
 
-type Props = StackScreenProps<AppStackParamList, 'VideoPlayer'>;
+type Props = StackScreenProps<RootStackParamList, 'VideoPlayer'>;
 
 const SEEK_STEP = 10; // seconds for double-tap
 const SPEEDS = [0.5, 1, 1.5, 2];
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { path, name } = route.params;
+  const { path, name, videoList, videoIndex } = route.params;
   const videoRef = useRef<any>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -367,6 +373,28 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }
 
+  // Next/Previous video handlers
+  const handleNextVideo = () => {
+    if (videoList && typeof videoIndex === 'number' && videoIndex < videoList.length - 1) {
+      const next = videoList[videoIndex + 1];
+      navigation.replace('VideoPlayer', {
+        ...next,
+        videoList,
+        videoIndex: videoIndex + 1,
+      });
+    }
+  };
+  const handlePrevVideo = () => {
+    if (videoList && typeof videoIndex === 'number' && videoIndex > 0) {
+      const prev = videoList[videoIndex - 1];
+      navigation.replace('VideoPlayer', {
+        ...prev,
+        videoList,
+        videoIndex: videoIndex - 1,
+      });
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#000' }]} edges={isLandscape ? ['top'] : ['top', 'left', 'right']}>
       {/* Header Controls */}
@@ -456,7 +484,10 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
       </GestureOverlay>
       
       {/* Enhanced Controls Container */}
-      <Animated.View style={[styles.controlsContainer, { opacity: controlsOpacity }]}>
+      <Animated.View
+        style={[styles.controlsContainer, { opacity: controlsOpacity }]}
+        pointerEvents={controlsVisible ? 'auto' : 'none'}
+      >
         {/* Progress Bar */}
         <View style={styles.progressBarRow}>
           <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
@@ -484,33 +515,27 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
             activeOpacity={0.7}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <View style={styles.controlBtnBackground}>
-              <Icon name={isLandscape ? "screen-rotation" : "screen-lock-rotation"} size={24} color="#fff" />
-            </View>
+            <Icon name={isLandscape ? "screen-rotation" : "screen-lock-rotation"} size={24} color="#fff" />
           </TouchableOpacity>
-          
+          {/* Previous Video (moved here) */}
+          <TouchableOpacity onPress={handlePrevVideo} style={styles.controlBtn} disabled={!videoList || videoIndex === 0}>
+            <Icon name="skip-previous" size={28} color={(!videoList || videoIndex === 0) ? '#888' : '#fff'} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => handleSeek(-10)} style={styles.controlBtn}>
-            <View style={styles.controlBtnBackground}>
-              <Icon name="replay-10" size={24} color="#fff" />
-            </View>
+            <Icon name="replay-10" size={24} color="#fff" />
           </TouchableOpacity>
-          
           <TouchableOpacity onPress={() => setPaused(p => !p)} style={styles.playPauseBtn}>
-            <View style={styles.playPauseBackground}>
-              <Icon name={paused ? 'play-arrow' : 'pause'} size={36} color="#fff" />
-            </View>
+            <Icon name={paused ? 'play-arrow' : 'pause'} size={36} color="#fff" />
           </TouchableOpacity>
-          
           <TouchableOpacity onPress={() => handleSeek(10)} style={styles.controlBtn}>
-            <View style={styles.controlBtnBackground}>
-              <Icon name="forward-10" size={24} color="#fff" />
-            </View>
+            <Icon name="forward-10" size={24} color="#fff" />
           </TouchableOpacity>
-          
-          <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.controlBtn}>
-            <View style={styles.controlBtnBackground}>
-              <Icon name="settings" size={24} color="#fff" />
-            </View>
+          {/* Next Video */}
+          <TouchableOpacity onPress={handleNextVideo} style={styles.controlBtn} disabled={!videoList || videoIndex === (videoList ? videoList.length - 1 : 0)}>
+            <Icon name="skip-next" size={28} color={(!videoList || videoIndex === (videoList ? videoList.length - 1 : 0)) ? '#888' : '#fff'} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Settings' as any)} style={styles.controlBtn}>
+            <Icon name="settings" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       </Animated.View>

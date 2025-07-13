@@ -17,6 +17,7 @@ import { requestStoragePermission } from '../utils/permissions';
 import { scanForVideos, FolderNode } from '../utils/videoScanner';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
+import type { AppStackParamList } from '../App';
 import { useTheme } from '../theme/ThemeContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RNFS from 'react-native-fs';
@@ -36,10 +37,9 @@ export type MediaLibraryParamList = {
         fromHomeButton?: boolean;
       }
     | undefined;
-  VideoPlayer: { path: string; name: string };
 };
 
-type Props = StackScreenProps<MediaLibraryParamList, 'MediaLibrary'>;
+type Props = StackScreenProps<AppStackParamList, 'MediaLibrary'>;
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -267,7 +267,15 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleVideoPress = (video: VideoFile) => {
-    navigation.navigate('VideoPlayer', { path: video.path, name: video.name });
+    // Get only video files from currentItems
+    const videoFiles = currentItems.filter(item => item.isFile) as VideoFile[];
+    const currentIndex = videoFiles.findIndex(v => v.path === video.path);
+    navigation.navigate('VideoPlayer', {
+      path: video.path,
+      name: video.name,
+      videoList: videoFiles.map(v => ({ path: v.path, name: v.name })),
+      videoIndex: currentIndex,
+    });
   };
 
   if (permissionGranted === null) {

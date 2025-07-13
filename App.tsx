@@ -13,7 +13,6 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import MediaLibraryScreen from './screens/MediaLibraryScreen';
 import VideoPlayerScreen from './screens/VideoPlayerScreen';
 import SettingsScreen from './screens/SettingsScreen';
-import SplashScreen from './components/SplashScreen';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import type { RootStackParamList } from './screens/VideoPlayerScreen';
 import { SettingsProvider } from './settings/SettingsContext';
@@ -70,7 +69,6 @@ const HeaderButtons = ({ navigation }: { navigation: any }) => {
 
 const App = () => {
   const navigationRef = useRef<any>(null);
-  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -88,20 +86,6 @@ const App = () => {
       brightnessManager.cleanup();
     };
   }, []);
-
-  const handleSplashFinish = () => {
-    setShowSplash(false);
-  };
-
-  if (showSplash) {
-    return (
-      <SettingsProvider>
-        <ThemeProvider>
-          <SplashScreen onFinish={handleSplashFinish} />
-        </ThemeProvider>
-      </SettingsProvider>
-    );
-  }
 
   return (
     <SettingsProvider>

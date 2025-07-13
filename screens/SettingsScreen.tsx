@@ -82,6 +82,43 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
+  // Add a modern Material You style switch component
+  const MaterialSwitch: React.FC<{
+    value: boolean;
+    onValueChange: (v: boolean) => void;
+    disabled?: boolean;
+    color?: string;
+  }> = ({ value, onValueChange, disabled, color }) => {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => !disabled && onValueChange(!value)}
+        style={{
+          width: 52,
+          height: 32,
+          borderRadius: 16,
+          backgroundColor: value ? (color || '#4285F4') : '#e0e0e0',
+          justifyContent: 'center',
+          padding: 4,
+          opacity: disabled ? 0.5 : 1,
+          borderWidth: 0,
+        }}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: value, disabled }}
+      >
+        <View
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            backgroundColor: '#fff',
+            alignSelf: value ? 'flex-end' : 'flex-start',
+          }}
+        />
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
       <ScrollView 
@@ -98,7 +135,7 @@ const SettingsScreen: React.FC = () => {
         </View>
 
         {/* Theme Toggle */}
-        <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Icon name="palette" size={24} color={theme.colors.primary} />
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Appearance</Text>
@@ -110,7 +147,7 @@ const SettingsScreen: React.FC = () => {
                 Switch between light and dark themes
               </Text>
             </View>
-            <Switch
+            <MaterialSwitch
               value={theme.mode === 'dark'}
               onValueChange={toggleTheme}
               color={theme.colors.primary}
@@ -119,7 +156,7 @@ const SettingsScreen: React.FC = () => {
         </View>
 
         {/* Gesture Controls */}
-        <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Icon name="touch-app" size={24} color={theme.colors.primary} />
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Gesture Controls</Text>
@@ -132,7 +169,7 @@ const SettingsScreen: React.FC = () => {
                 Enable vertical swipe on right side for volume control
               </Text>
             </View>
-            <Switch
+            <MaterialSwitch
               value={settings.volumeGesture}
               onValueChange={v => updateSetting('volumeGesture', v)}
               color={theme.colors.primary}
@@ -146,7 +183,7 @@ const SettingsScreen: React.FC = () => {
                 Enable vertical swipe on left side for brightness control
               </Text>
             </View>
-            <Switch
+            <MaterialSwitch
               value={settings.brightnessGesture}
               onValueChange={v => updateSetting('brightnessGesture', v)}
               color={theme.colors.primary}
@@ -155,7 +192,7 @@ const SettingsScreen: React.FC = () => {
         </View>
 
         {/* Sensitivity Settings */}
-        <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Icon name="tune" size={24} color={theme.colors.primary} />
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Sensitivity</Text>
@@ -241,7 +278,7 @@ const SettingsScreen: React.FC = () => {
         </View>
 
         {/* Player Settings */}
-        <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Icon name="play-circle-outline" size={24} color={theme.colors.primary} />
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Player</Text>
@@ -363,14 +400,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   section: {
-    borderRadius: 16,
-    marginBottom: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingHorizontal: 6,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -387,8 +417,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   settingInfo: {
     flex: 1,

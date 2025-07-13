@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, StyleSheet, Dimensions, Modal, BackHandler } from 'react-native';
 import { requestStoragePermission } from '../utils/permissions';
 import { scanForVideos, FolderNode, VideoFile } from '../utils/videoScanner';
-import { StackScreenProps } from '@react-navigation/stack';
-import { RootStackParamList } from './VideoPlayerScreen';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import RNFS from 'react-native-fs';
@@ -11,7 +11,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import brightnessManager from '../utils/brightnessManager';
 import EmptyState from '../components/EmptyState';
 
-type Props = StackScreenProps<RootStackParamList, 'MediaLibrary'>;
+// Extend RootStackParamList to allow path param for MediaLibrary
+export type MediaLibraryParamList = {
+  MediaLibrary: { path?: string; resetToRoot?: boolean; showFilters?: boolean } | undefined;
+  VideoPlayer: { path: string; name: string };
+};
+
+type Props = StackScreenProps<MediaLibraryParamList, 'MediaLibrary'>;
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -26,27 +32,30 @@ const formatFileSize = (bytes: number): string => {
 const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
-  const [currentPath, setCurrentPath] = useState<string>(RNFS.ExternalStorageDirectoryPath);
   const [currentItems, setCurrentItems] = useState<Array<FolderNode | VideoFile>>([]);
-  const [pathHistory, setPathHistory] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<string>('fileSize');
   const { theme, toggleTheme } = useTheme();
 
+  // Use path from route params or default to root
+  const currentPath = route.params?.path || RNFS.ExternalStorageDirectoryPath;
+
+  // Remove pathHistory and currentPath state
+
+  // Remove custom back handler logic
+
   // Handle navigation parameters
   useEffect(() => {
     if (route.params?.resetToRoot) {
-      navigateToRoot();
-      // Clear the parameter to prevent repeated resets
+      navigation.navigate('MediaLibrary', { path: RNFS.ExternalStorageDirectoryPath });
       navigation.setParams({ resetToRoot: undefined });
     }
     if (route.params?.showFilters) {
       setShowFiltersModal(true);
-      // Clear the parameter to prevent repeated opens
       navigation.setParams({ showFilters: undefined });
     }
-  }, [route.params?.resetToRoot, route.params?.showFilters]);
+  }, [route.params?.resetToRoot, route.params?.showFilters, navigation]);
 
   useEffect(() => {
     (async () => {
@@ -61,67 +70,34 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [permissionGranted, currentPath]);
 
-  // Sync brightness when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      // Ensure brightness is synced with system when returning to this screen
       brightnessManager.exitVideoPlayer();
     }, [])
   );
 
-  useEffect(() => {
-    const onBackPress = () => {
-      if (currentPath !== RNFS.ExternalStorageDirectoryPath) {
-        // Go to previous folder
-        if (pathHistory.length > 0) {
-          setCurrentPath(pathHistory[pathHistory.length - 1]);
-          setPathHistory(pathHistory.slice(0, -1));
-        } else {
-          setCurrentPath(RNFS.ExternalStorageDirectoryPath);
-        }
-        return true; // Prevent default behavior (app exit)
-      } else if (navigation.canGoBack()) {
-        navigation.goBack();
-        return true;
-      }
-      return false; // Allow default behavior (app exit)
-    };
-    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => subscription.remove();
-  }, [currentPath, pathHistory, navigation]);
-
   const loadCurrentDirectory = async () => {
     setLoading(true);
     setError(null);
-    
     try {
       const items = await RNFS.readDir(currentPath);
       const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv', '3gp', 'mpeg', 'mpg', 'm4v'];
-      
       const folders: FolderNode[] = [];
       const videos: VideoFile[] = [];
-      
-      // Process items in batches to avoid blocking the UI
       const batchSize = 10;
       for (let i = 0; i < items.length; i += batchSize) {
         const batch = items.slice(i, i + batchSize);
-        
         for (const item of batch) {
           try {
             if (item.isDirectory()) {
-              // Check if folder contains videos (with timeout)
               try {
                 const subItems = await Promise.race([
                   RNFS.readDir(item.path),
-                  new Promise<never>((_, reject) => 
-                    setTimeout(() => reject(new Error('Timeout')), 2000)
-                  )
+                  new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
                 ]) as RNFS.ReadDirItem[];
-                
-                const hasVideos = subItems.some((subItem: RNFS.ReadDirItem) => 
+                const hasVideos = subItems.some((subItem: RNFS.ReadDirItem) =>
                   subItem.isFile() && videoExtensions.includes(subItem.name.split('.').pop()?.toLowerCase() || '')
                 );
-                
                 if (hasVideos) {
                   folders.push({
                     name: item.name,
@@ -135,23 +111,20 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
                 console.warn(`Skipping folder ${item.name}:`, e);
               }
             } else if (item.isFile() && videoExtensions.includes(item.name.split('.').pop()?.toLowerCase() || '')) {
-              // Get file stats for additional information
               try {
                 const stats = await RNFS.stat(item.path);
                 const fileSize = formatFileSize(stats.size);
                 const lastModified = new Date(stats.mtime).toLocaleDateString();
-                
                 videos.push({
                   name: item.name,
                   path: item.path,
                   isFile: true,
                   fileSize,
                   lastModified,
-                  resolution: 'Unknown', // Will be updated later if needed
-                  duration: 'Unknown'    // Will be updated later if needed
+                  resolution: 'Unknown',
+                  duration: 'Unknown'
                 });
               } catch (e) {
-                // Fallback if stats can't be read
                 videos.push({
                   name: item.name,
                   path: item.path,
@@ -163,19 +136,14 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
             console.warn(`Error processing item ${item.name}:`, e);
           }
         }
-        
-        // Allow UI to update between batches
         if (i + batchSize < items.length) {
           await new Promise(resolve => setTimeout(resolve, 0));
         }
       }
-      
-      // Sort folders first, then videos, both alphabetically
       const sortedItems = [
         ...folders.sort((a, b) => a.name.localeCompare(b.name)),
         ...videos.sort((a, b) => a.name.localeCompare(b.name))
       ];
-      
       setCurrentItems(sortedItems);
     } catch (e) {
       console.error('Failed to load directory contents:', e);
@@ -185,14 +153,9 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
+  // Refactor folder navigation to use stack navigation
   const navigateToFolder = (folderPath: string) => {
-    setPathHistory(prev => [...prev, currentPath]);
-    setCurrentPath(folderPath);
-  };
-
-  const navigateToRoot = () => {
-    setCurrentPath(RNFS.ExternalStorageDirectoryPath);
-    setPathHistory([]);
+    navigation.push('MediaLibrary', { path: folderPath });
   };
 
   const handleVideoPress = (video: VideoFile) => {

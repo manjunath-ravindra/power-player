@@ -18,6 +18,7 @@ import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import type { RootStackParamList } from './screens/VideoPlayerScreen';
 import { SettingsProvider } from './settings/SettingsContext';
 import brightnessManager from './utils/brightnessManager';
+import { TransitionSpecs, CardStyleInterpolators } from '@react-navigation/stack';
 
 // Extend RootStackParamList to include Settings
 export type AppStackParamList = RootStackParamList & {
@@ -150,6 +151,12 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
               cardStyle: {
                 backgroundColor: theme.colors.background,
               },
+              gestureEnabled: true,
+              transitionSpec: {
+                open: TransitionSpecs.TransitionIOSSpec,
+                close: TransitionSpecs.TransitionIOSSpec,
+              },
+              cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
             };
           }}
         >
@@ -178,7 +185,7 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
             component={VideoPlayerScreen} 
             options={{ 
               headerShown: false,
-              gestureEnabled: false,
+              gestureEnabled: true,
             }} 
           />
           <Stack.Screen 

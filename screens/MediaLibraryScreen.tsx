@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, StyleSheet, Dimensions, Modal, BackHandler } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  Dimensions,
+  Modal,
+  BackHandler,
+} from 'react-native';
 import { requestStoragePermission } from '../utils/permissions';
 import { scanForVideos, FolderNode, VideoFile } from '../utils/videoScanner';
 import type { StackScreenProps } from '@react-navigation/stack';
@@ -13,7 +24,14 @@ import EmptyState from '../components/EmptyState';
 
 // Extend RootStackParamList to allow path param for MediaLibrary
 export type MediaLibraryParamList = {
-  MediaLibrary: { path?: string; resetToRoot?: boolean; showFilters?: boolean; fromHomeButton?: boolean } | undefined;
+  MediaLibrary:
+    | {
+        path?: string;
+        resetToRoot?: boolean;
+        showFilters?: boolean;
+        fromHomeButton?: boolean;
+      }
+    | undefined;
   VideoPlayer: { path: string; name: string };
 };
 
@@ -30,9 +48,13 @@ const formatFileSize = (bytes: number): string => {
 };
 
 const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
-  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
+  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(
+    null,
+  );
   const [loading, setLoading] = useState(false);
-  const [currentItems, setCurrentItems] = useState<Array<FolderNode | VideoFile>>([]);
+  const [currentItems, setCurrentItems] = useState<
+    Array<FolderNode | VideoFile>
+  >([]);
   const [error, setError] = useState<string | null>(null);
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<string>('fileSize');
@@ -48,7 +70,9 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
   // Handle navigation parameters
   useEffect(() => {
     if (route.params?.resetToRoot) {
-      navigation.navigate('MediaLibrary', { path: RNFS.ExternalStorageDirectoryPath });
+      navigation.navigate('MediaLibrary', {
+        path: RNFS.ExternalStorageDirectoryPath,
+      });
       navigation.setParams({ resetToRoot: undefined });
     }
     if (route.params?.showFilters) {
@@ -73,7 +97,7 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
   useFocusEffect(
     React.useCallback(() => {
       brightnessManager.exitVideoPlayer();
-    }, [])
+    }, []),
   );
 
   const loadCurrentDirectory = async () => {
@@ -81,7 +105,19 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
     setError(null);
     try {
       const items = await RNFS.readDir(currentPath);
-      const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv', '3gp', 'mpeg', 'mpg', 'm4v'];
+      const videoExtensions = [
+        'mp4',
+        'mkv',
+        'avi',
+        'mov',
+        'webm',
+        'flv',
+        'wmv',
+        '3gp',
+        'mpeg',
+        'mpg',
+        'm4v',
+      ];
       const folders: FolderNode[] = [];
       const videos: VideoFile[] = [];
       const batchSize = 10;
@@ -91,26 +127,37 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
           try {
             if (item.isDirectory()) {
               try {
-                const subItems = await Promise.race([
+                const subItems = (await Promise.race([
                   RNFS.readDir(item.path),
-                  new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
-                ]) as RNFS.ReadDirItem[];
-                const hasVideos = subItems.some((subItem: RNFS.ReadDirItem) =>
-                  subItem.isFile() && videoExtensions.includes(subItem.name.split('.').pop()?.toLowerCase() || '')
+                  new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error('Timeout')), 2000),
+                  ),
+                ])) as RNFS.ReadDirItem[];
+                const hasVideos = subItems.some(
+                  (subItem: RNFS.ReadDirItem) =>
+                    subItem.isFile() &&
+                    videoExtensions.includes(
+                      subItem.name.split('.').pop()?.toLowerCase() || '',
+                    ),
                 );
                 if (hasVideos) {
                   folders.push({
                     name: item.name,
                     path: item.path,
                     isFile: false,
-                    children: []
+                    children: [],
                   });
                 }
               } catch (e) {
                 // Skip folders we can't access or that timeout
                 console.warn(`Skipping folder ${item.name}:`, e);
               }
-            } else if (item.isFile() && videoExtensions.includes(item.name.split('.').pop()?.toLowerCase() || '')) {
+            } else if (
+              item.isFile() &&
+              videoExtensions.includes(
+                item.name.split('.').pop()?.toLowerCase() || '',
+              )
+            ) {
               try {
                 const stats = await RNFS.stat(item.path);
                 const fileSize = formatFileSize(stats.size);
@@ -122,13 +169,13 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
                   fileSize,
                   lastModified,
                   resolution: 'Unknown',
-                  duration: 'Unknown'
+                  duration: 'Unknown',
                 });
               } catch (e) {
                 videos.push({
                   name: item.name,
                   path: item.path,
-                  isFile: true
+                  isFile: true,
                 });
               }
             }
@@ -142,12 +189,14 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
       }
       const sortedItems = [
         ...folders.sort((a, b) => a.name.localeCompare(b.name)),
-        ...videos.sort((a, b) => a.name.localeCompare(b.name))
+        ...videos.sort((a, b) => a.name.localeCompare(b.name)),
       ];
       setCurrentItems(sortedItems);
     } catch (e) {
       console.error('Failed to load directory contents:', e);
-      setError('Failed to load directory contents. Please check your storage permissions.');
+      setError(
+        'Failed to load directory contents. Please check your storage permissions.',
+      );
     } finally {
       setLoading(false);
     }
@@ -164,7 +213,9 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
 
   if (permissionGranted === null) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={[styles.centerText, { color: theme.colors.text }]}>
@@ -177,7 +228,9 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
 
   if (!permissionGranted) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
         <EmptyState
           title="Storage Permission Required"
           subtitle="Please enable storage permission in settings to access your video files"
@@ -190,10 +243,14 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={[styles.centerText, { color: theme.colors.text }]}>Loading...</Text>
+          <Text style={[styles.centerText, { color: theme.colors.text }]}>
+            Loading...
+          </Text>
         </View>
       </View>
     );
@@ -201,15 +258,34 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
 
   if (error) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
         <View style={styles.centerContent}>
           <Icon name="error-outline" size={64} color={theme.colors.error} />
-          <Text style={[styles.centerText, { color: theme.colors.text, marginTop: 16 }]}>{error}</Text>
-          <TouchableOpacity 
-            onPress={loadCurrentDirectory} 
-            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+          <Text
+            style={[
+              styles.centerText,
+              { color: theme.colors.text, marginTop: 16 },
+            ]}
           >
-            <Text style={[styles.retryButtonText, { color: theme.colors.background }]}>Retry</Text>
+            {error}
+          </Text>
+          <TouchableOpacity
+            onPress={loadCurrentDirectory}
+            style={[
+              styles.retryButton,
+              { backgroundColor: theme.colors.primary },
+            ]}
+          >
+            <Text
+              style={[
+                styles.retryButtonText,
+                { color: theme.colors.background },
+              ]}
+            >
+              Retry
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -218,67 +294,60 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const renderItem = ({ item }: { item: FolderNode | VideoFile }) => (
     <TouchableOpacity
-      style={[
-        styles.itemCard,
-        { 
-          backgroundColor: theme.colors.card,
-          borderColor: theme.colors.border,
-        }
-      ]}
-      onPress={() => item.isFile ? handleVideoPress(item) : navigateToFolder(item.path)}
+      style={styles.itemCard}
+      onPress={() =>
+        item.isFile ? handleVideoPress(item) : navigateToFolder(item.path)
+      }
       activeOpacity={0.7}
     >
       <View style={styles.itemContent}>
         {item.isFile ? (
-          <View style={[
-            styles.iconContainer,
-            { backgroundColor: theme.colors.accent + '20' }
-          ]}>
-            <Icon 
-              name="play-circle" 
-              size={32} 
-              color={theme.colors.accent} 
-            />
+          <View style={styles.iconContainer}>
+            <Icon name="play-circle" size={48} color={theme.colors.primary} />
           </View>
         ) : (
-          <View style={[
-            styles.iconContainer,
-            { backgroundColor: theme.colors.accent + '20' }
-          ]}>
-            <Icon 
-              name="folder" 
-              size={32} 
-              color={theme.colors.accent} 
-            />
+          <View style={styles.iconContainer}>
+            <Icon name="folder" size={48} color="#FFD600" />
           </View>
         )}
-        
+
         <View style={styles.itemTextContainer}>
-          <Text 
+          <Text
             style={[styles.itemTitle, { color: theme.colors.text }]}
             numberOfLines={2}
           >
             {item.name}
           </Text>
           {item.isFile && (
-            <Text style={[styles.itemSubtitle, { color: theme.colors.textSecondary }]}>
-              {selectedFilter === 'fileSize' && (item.fileSize ? `${item.fileSize}` : 'Loading...')}
-              {selectedFilter === 'lastModified' && (item.lastModified ? `${item.lastModified}` : 'Unknown')}
-              {selectedFilter === 'resolution' && (item.resolution ? `${item.resolution}` : 'Unknown')}
-              {selectedFilter === 'duration' && (item.duration ? `${item.duration}` : 'Unknown')}
+            <Text
+              style={[
+                styles.itemSubtitle,
+                { color: theme.colors.textSecondary },
+              ]}
+            >
+              {selectedFilter === 'fileSize' &&
+                (item.fileSize ? `${item.fileSize}` : 'Loading...')}
+              {selectedFilter === 'lastModified' &&
+                (item.lastModified ? `${item.lastModified}` : 'Unknown')}
+              {selectedFilter === 'resolution' &&
+                (item.resolution ? `${item.resolution}` : 'Unknown')}
+              {selectedFilter === 'duration' &&
+                (item.duration ? `${item.duration}` : 'Unknown')}
             </Text>
           )}
         </View>
-        
+
         {!item.isFile && (
-          <Icon name="chevron-right" size={20} color={theme.colors.textSecondary} />
+          <Icon name="chevron-right" size={20} color={theme.colors.accent} />
         )}
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       {/* Content */}
       {currentItems.length === 0 ? (
         <EmptyState
@@ -290,7 +359,7 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
         <FlatList
           data={currentItems}
           renderItem={renderItem}
-          keyExtractor={(item) => item.path}
+          keyExtractor={item => item.path}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -309,12 +378,18 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
           activeOpacity={1}
           onPress={() => setShowFiltersModal(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.colors.card },
+            ]}
             // Prevent closing when tapping inside the modal content
             onStartShouldSetResponder={() => true}
           >
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Display Options</Text>
+              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                Display Options
+              </Text>
               <TouchableOpacity
                 onPress={() => setShowFiltersModal(false)}
                 style={styles.closeButton}
@@ -322,27 +397,40 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Icon name="close" size={24} color={theme.colors.text} />
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.filterOptions}>
               <TouchableOpacity
                 style={[
                   styles.filterOption,
-                  selectedFilter === 'fileSize' && { backgroundColor: theme.colors.primary + '20' }
+                  selectedFilter === 'fileSize' && {
+                    backgroundColor: theme.colors.primary + '20',
+                  },
                 ]}
                 onPress={() => {
                   setSelectedFilter('fileSize');
                   setShowFiltersModal(false);
                 }}
               >
-                <Icon 
-                  name="storage" 
-                  size={20} 
-                  color={selectedFilter === 'fileSize' ? theme.colors.primary : theme.colors.textSecondary} 
+                <Icon
+                  name="storage"
+                  size={20}
+                  color={
+                    selectedFilter === 'fileSize'
+                      ? theme.colors.primary
+                      : theme.colors.textSecondary
+                  }
                 />
-                <Text style={[
-                  styles.filterOptionText,
-                  { color: selectedFilter === 'fileSize' ? theme.colors.primary : theme.colors.text }
-                ]}>
+                <Text
+                  style={[
+                    styles.filterOptionText,
+                    {
+                      color:
+                        selectedFilter === 'fileSize'
+                          ? theme.colors.primary
+                          : theme.colors.text,
+                    },
+                  ]}
+                >
                   File Size
                 </Text>
               </TouchableOpacity>
@@ -350,22 +438,35 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
               <TouchableOpacity
                 style={[
                   styles.filterOption,
-                  selectedFilter === 'lastModified' && { backgroundColor: theme.colors.primary + '20' }
+                  selectedFilter === 'lastModified' && {
+                    backgroundColor: theme.colors.primary + '20',
+                  },
                 ]}
                 onPress={() => {
                   setSelectedFilter('lastModified');
                   setShowFiltersModal(false);
                 }}
               >
-                <Icon 
-                  name="schedule" 
-                  size={20} 
-                  color={selectedFilter === 'lastModified' ? theme.colors.primary : theme.colors.textSecondary} 
+                <Icon
+                  name="schedule"
+                  size={20}
+                  color={
+                    selectedFilter === 'lastModified'
+                      ? theme.colors.primary
+                      : theme.colors.textSecondary
+                  }
                 />
-                <Text style={[
-                  styles.filterOptionText,
-                  { color: selectedFilter === 'lastModified' ? theme.colors.primary : theme.colors.text }
-                ]}>
+                <Text
+                  style={[
+                    styles.filterOptionText,
+                    {
+                      color:
+                        selectedFilter === 'lastModified'
+                          ? theme.colors.primary
+                          : theme.colors.text,
+                    },
+                  ]}
+                >
                   Last Modified
                 </Text>
               </TouchableOpacity>
@@ -373,22 +474,35 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
               <TouchableOpacity
                 style={[
                   styles.filterOption,
-                  selectedFilter === 'resolution' && { backgroundColor: theme.colors.primary + '20' }
+                  selectedFilter === 'resolution' && {
+                    backgroundColor: theme.colors.primary + '20',
+                  },
                 ]}
                 onPress={() => {
                   setSelectedFilter('resolution');
                   setShowFiltersModal(false);
                 }}
               >
-                <Icon 
-                  name="aspect-ratio" 
-                  size={20} 
-                  color={selectedFilter === 'resolution' ? theme.colors.primary : theme.colors.textSecondary} 
+                <Icon
+                  name="aspect-ratio"
+                  size={20}
+                  color={
+                    selectedFilter === 'resolution'
+                      ? theme.colors.primary
+                      : theme.colors.textSecondary
+                  }
                 />
-                <Text style={[
-                  styles.filterOptionText,
-                  { color: selectedFilter === 'resolution' ? theme.colors.primary : theme.colors.text }
-                ]}>
+                <Text
+                  style={[
+                    styles.filterOptionText,
+                    {
+                      color:
+                        selectedFilter === 'resolution'
+                          ? theme.colors.primary
+                          : theme.colors.text,
+                    },
+                  ]}
+                >
                   Resolution
                 </Text>
               </TouchableOpacity>
@@ -396,22 +510,35 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
               <TouchableOpacity
                 style={[
                   styles.filterOption,
-                  selectedFilter === 'duration' && { backgroundColor: theme.colors.primary + '20' }
+                  selectedFilter === 'duration' && {
+                    backgroundColor: theme.colors.primary + '20',
+                  },
                 ]}
                 onPress={() => {
                   setSelectedFilter('duration');
                   setShowFiltersModal(false);
                 }}
               >
-                <Icon 
-                  name="timer" 
-                  size={20} 
-                  color={selectedFilter === 'duration' ? theme.colors.primary : theme.colors.textSecondary} 
+                <Icon
+                  name="timer"
+                  size={20}
+                  color={
+                    selectedFilter === 'duration'
+                      ? theme.colors.primary
+                      : theme.colors.textSecondary
+                  }
                 />
-                <Text style={[
-                  styles.filterOptionText,
-                  { color: selectedFilter === 'duration' ? theme.colors.primary : theme.colors.text }
-                ]}>
+                <Text
+                  style={[
+                    styles.filterOptionText,
+                    {
+                      color:
+                        selectedFilter === 'duration'
+                          ? theme.colors.primary
+                          : theme.colors.text,
+                    },
+                  ]}
+                >
                   Duration
                 </Text>
               </TouchableOpacity>
@@ -463,26 +590,22 @@ const styles = StyleSheet.create({
     height: 12,
   },
   itemCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
   },
   itemContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
+    width: 50,
+    height: 50,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 20,
+    marginRight: 12,
   },
   itemTextContainer: {
     flex: 1,
@@ -542,4 +665,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MediaLibraryScreen; 
+export default MediaLibraryScreen;

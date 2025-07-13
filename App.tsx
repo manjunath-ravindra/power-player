@@ -36,7 +36,7 @@ const HeaderButtons = ({ navigation }: { navigation: any }) => {
   return (
     <View style={styles.headerButtons}>
       <TouchableOpacity
-        style={[styles.headerButton, { backgroundColor: theme.colors.primary + '20' }]}
+        style={styles.headerButton}
         onPress={toggleTheme}
         activeOpacity={0.7}
       >
@@ -47,7 +47,7 @@ const HeaderButtons = ({ navigation }: { navigation: any }) => {
         />
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.headerButton, { backgroundColor: theme.colors.primary + '20' }]}
+        style={styles.headerButton}
         onPress={() => {
           // Open filters modal
           navigation.navigate('MediaLibrary', { showFilters: true });
@@ -57,7 +57,7 @@ const HeaderButtons = ({ navigation }: { navigation: any }) => {
         <Icon name="filter-list" size={20} color={theme.colors.primary} />
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.headerButton, { backgroundColor: theme.colors.primary + '20' }]}
+        style={styles.headerButton}
         onPress={() => navigation.navigate('Settings')}
         activeOpacity={0.7}
       >
@@ -130,8 +130,8 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
             headerTintColor: theme.colors.text,
             headerTitleStyle: {
               color: theme.colors.text,
-              fontSize: 18,
-              fontWeight: '600',
+              fontSize: 24,
+              fontWeight: '800',
             },
             headerTitleAlign: 'center' as const,
             cardStyle: {
@@ -153,7 +153,7 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
               headerRight: () => <HeaderButtons navigation={navigation} />,
               headerLeft: () => (
                 <TouchableOpacity
-                  style={[styles.headerButton, { backgroundColor: theme.colors.primary + '20' }]}
+                  style={styles.headerButton}
                   onPress={() => {
                     // Only pop to top if not already at root
                     const state = navigation.getState();

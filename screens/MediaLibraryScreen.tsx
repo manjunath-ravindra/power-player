@@ -332,16 +332,16 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
             {item.thumbnailUri ? (
               <Image
                 source={{ uri: item.thumbnailUri }}
-                style={{ width: 48, height: 48, borderRadius: 8 }}
+                style={{ width: 160, height: 98, borderRadius: 16 }}
                 resizeMode="cover"
               />
             ) : (
-              <Icon name="play-circle" size={48} color={theme.colors.primary} />
+              <Icon name="play-circle" size={120} color={theme.colors.primary} />
             )}
           </View>
         ) : (
           <View style={styles.iconContainer}>
-            <Icon name="folder" size={48} color="#FFD600" />
+            <Icon name="folder" size={120} color={theme.colors.folderIcon} />
           </View>
         )}
 
@@ -621,11 +621,11 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   separator: {
-    height: 12,
+    height: 6,
   },
   itemCard: {
     borderRadius: 4,
-    paddingVertical: 10,
+    paddingVertical: 4,
     paddingHorizontal: 0,
     backgroundColor: 'transparent',
   },
@@ -634,9 +634,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
+    width: 164,
+    height: 102,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,

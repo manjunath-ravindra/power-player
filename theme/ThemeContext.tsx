@@ -26,6 +26,7 @@ const lightTheme = {
     shadow: 'rgba(0, 0, 0, 0.1)',
     videoControls: 'rgba(0, 0, 0, 0.7)',
     videoControlsLight: 'rgba(0, 0, 0, 0.5)',
+    folderIcon: '#FFD600',
   },
 };
 
@@ -52,6 +53,7 @@ const darkTheme = {
     shadow: 'rgba(0, 0, 0, 0.3)',
     videoControls: 'rgba(0, 0, 0, 0.8)',
     videoControlsLight: 'rgba(0, 0, 0, 0.6)',
+    folderIcon: '#4F8FF7',
   },
 };
 

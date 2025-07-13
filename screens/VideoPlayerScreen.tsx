@@ -287,11 +287,17 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
         return `Embedded ${i + 1}`;
       });
       setSubtitleLabels(['None', ...labels]);
+      // Always pre-select the first available subtitle if present
+      if (labels.length > 0) {
+        setSelectedSubtitle(labels[0]);
+      } else {
+        setSelectedSubtitle('None');
+      }
     } else {
       setTextTracks([]);
       setSubtitleLabels(['None']);
+      setSelectedSubtitle('None');
     }
-    setSelectedSubtitle('None'); // Reset selection on new video
   };
 
   // Calculate video bounds when video dimensions change

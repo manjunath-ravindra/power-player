@@ -10,9 +10,10 @@ import {
   Dimensions,
   Modal,
   BackHandler,
+  Image,
 } from 'react-native';
 import { requestStoragePermission } from '../utils/permissions';
-import { scanForVideos, FolderNode, VideoFile } from '../utils/videoScanner';
+import { scanForVideos, FolderNode } from '../utils/videoScanner';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
@@ -21,6 +22,7 @@ import RNFS from 'react-native-fs';
 import { useFocusEffect } from '@react-navigation/native';
 import brightnessManager from '../utils/brightnessManager';
 import EmptyState from '../components/EmptyState';
+import { createThumbnail } from 'react-native-create-thumbnail';
 
 // Extend RootStackParamList to allow path param for MediaLibrary
 export type MediaLibraryParamList = {
@@ -45,6 +47,18 @@ const formatFileSize = (bytes: number): string => {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
+// Extend VideoFile type to include optional thumbnailUri
+export type VideoFile = {
+  name: string;
+  path: string;
+  isFile: true;
+  fileSize?: string;
+  lastModified?: string;
+  resolution?: string;
+  duration?: string;
+  thumbnailUri?: string;
 };
 
 const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -162,6 +176,17 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
                 const stats = await RNFS.stat(item.path);
                 const fileSize = formatFileSize(stats.size);
                 const lastModified = new Date(stats.mtime).toLocaleDateString();
+                let thumbnailUri: string | undefined = undefined;
+                try {
+                  const thumb = await createThumbnail({
+                    url: `file://${item.path}`,
+                    timeStamp: 10000,
+                  });
+                  thumbnailUri = thumb.path;
+                } catch (thumbErr) {
+                  // Thumbnail generation failed, fallback to icon
+                  thumbnailUri = undefined;
+                }
                 videos.push({
                   name: item.name,
                   path: item.path,
@@ -170,6 +195,7 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
                   lastModified,
                   resolution: 'Unknown',
                   duration: 'Unknown',
+                  thumbnailUri,
                 });
               } catch (e) {
                 videos.push({
@@ -303,7 +329,15 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
       <View style={styles.itemContent}>
         {item.isFile ? (
           <View style={styles.iconContainer}>
-            <Icon name="play-circle" size={48} color={theme.colors.primary} />
+            {item.thumbnailUri ? (
+              <Image
+                source={{ uri: item.thumbnailUri }}
+                style={{ width: 48, height: 48, borderRadius: 8 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Icon name="play-circle" size={48} color={theme.colors.primary} />
+            )}
           </View>
         ) : (
           <View style={styles.iconContainer}>

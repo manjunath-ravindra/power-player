@@ -5,14 +5,15 @@
  * @format
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { TouchableOpacity, StatusBar } from 'react-native';
+import { TouchableOpacity, StatusBar, View, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MediaLibraryScreen from './screens/MediaLibraryScreen';
 import VideoPlayerScreen from './screens/VideoPlayerScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import SplashScreen from './components/SplashScreen';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import type { RootStackParamList } from './screens/VideoPlayerScreen';
 import { SettingsProvider } from './settings/SettingsContext';
@@ -25,34 +26,37 @@ export type AppStackParamList = RootStackParamList & {
 
 const Stack = createStackNavigator<AppStackParamList>();
 
-// Component to render header buttons with theme context
+// Enhanced header buttons component
 const HeaderButtons = ({ navigation }: { navigation: any }) => {
   const { theme, toggleTheme } = useTheme();
   
   return (
-    <>
+    <View style={styles.headerButtons}>
       <TouchableOpacity
-        style={{ marginRight: 16 }}
+        style={[styles.headerButton, { backgroundColor: theme.colors.primary + '20' }]}
         onPress={toggleTheme}
+        activeOpacity={0.7}
       >
         <Icon 
           name={theme.mode === 'light' ? 'dark-mode' : 'light-mode'} 
-          size={24} 
+          size={20} 
           color={theme.colors.primary} 
         />
       </TouchableOpacity>
       <TouchableOpacity
-        style={{ marginRight: 16 }}
+        style={[styles.headerButton, { backgroundColor: theme.colors.primary + '20' }]}
         onPress={() => navigation.navigate('Settings')}
+        activeOpacity={0.7}
       >
-        <Icon name="settings" size={24} color={theme.colors.primary} />
+        <Icon name="settings" size={20} color={theme.colors.primary} />
       </TouchableOpacity>
-    </>
+    </View>
   );
 };
 
 const App = () => {
   const navigationRef = useRef<any>(null);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     // Initialize brightness manager and start periodic syncing
@@ -66,6 +70,20 @@ const App = () => {
       brightnessManager.cleanup();
     };
   }, []);
+
+  const handleSplashFinish = () => {
+    setShowSplash(false);
+  };
+
+  if (showSplash) {
+    return (
+      <SettingsProvider>
+        <ThemeProvider>
+          <SplashScreen onFinish={handleSplashFinish} />
+        </ThemeProvider>
+      </SettingsProvider>
+    );
+  }
 
   return (
     <SettingsProvider>
@@ -82,7 +100,7 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
 
   return (
     <>
-            <StatusBar 
+      <StatusBar 
         barStyle={theme.mode === 'light' ? 'dark-content' : 'light-content'} 
         backgroundColor="transparent" 
         translucent={true} 
@@ -103,10 +121,20 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
             return {
               headerStyle: {
                 backgroundColor: theme.colors.background,
+                elevation: 0,
+                shadowOpacity: 0,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.colors.border,
               },
               headerTintColor: theme.colors.text,
               headerTitleStyle: {
                 color: theme.colors.text,
+                fontSize: 18,
+                fontWeight: '600',
+              },
+              headerTitleAlign: 'center' as const,
+              cardStyle: {
+                backgroundColor: theme.colors.background,
               },
             };
           }}
@@ -115,16 +143,58 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
             name="MediaLibrary" 
             component={MediaLibraryScreen} 
             options={({ navigation }) => ({
-              title: 'Media Library',
+              title: 'Power Player',
               headerRight: () => <HeaderButtons navigation={navigation} />,
+              headerLeft: () => (
+                <View style={styles.headerLeft}>
+                  <Icon name="video-library" size={24} color={theme.colors.primary} />
+                </View>
+              ),
             })}
           />
-          <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+          <Stack.Screen 
+            name="VideoPlayer" 
+            component={VideoPlayerScreen} 
+            options={{ 
+              headerShown: false,
+              gestureEnabled: false,
+            }} 
+          />
+          <Stack.Screen 
+            name="Settings" 
+            component={SettingsScreen} 
+            options={{ 
+              title: 'Settings',
+              headerTitleStyle: {
+                color: theme.colors.text,
+                fontSize: 18,
+                fontWeight: '600',
+              },
+            }} 
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </>
   );
 };
+
+const styles = StyleSheet.create({
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  headerButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  headerLeft: {
+    marginLeft: 16,
+  },
+});
 
 export default App;

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Alert, Dimensions, StatusBar } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Alert, Dimensions, StatusBar, Animated } from 'react-native';
 import Slider from '@react-native-community/slider';
 import Video from 'react-native-video';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -46,6 +46,10 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
   const [isLandscape, setIsLandscape] = useState(false);
   const [videoBounds, setVideoBounds] = useState<{x: number, y: number, width: number, height: number} | undefined>(undefined);
 
+  // Animation values for smooth transitions
+  const controlsOpacity = useRef(new Animated.Value(1)).current;
+  const feedbackScale = useRef(new Animated.Value(0)).current;
+
   // Track start values for gestures
   const gestureStartVolume = useRef<number>(0);
   const gestureStartBrightness = useRef<number>(0);
@@ -70,10 +74,23 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
   // Auto-hide controls after user-defined timeout (only when playing and not manually toggled)
   const showControls = () => {
     setControlsVisible(true);
+    Animated.timing(controlsOpacity, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    
     if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
     // Only auto-hide if video is playing and controls weren't manually toggled
     if (!paused && !controlsManuallyToggled) {
-      controlsTimeout.current = setTimeout(() => setControlsVisible(false), settings.controlTimeout * 1000);
+      controlsTimeout.current = setTimeout(() => {
+        setControlsVisible(false);
+        Animated.timing(controlsOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      }, settings.controlTimeout * 1000);
     }
   };
 
@@ -88,7 +105,14 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!paused && controlsVisible && !controlsManuallyToggled) {
       // Video just started playing, start auto-hide timer
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
-      controlsTimeout.current = setTimeout(() => setControlsVisible(false), settings.controlTimeout * 1000);
+      controlsTimeout.current = setTimeout(() => {
+        setControlsVisible(false);
+        Animated.timing(controlsOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      }, settings.controlTimeout * 1000);
     }
   }, [paused, controlsVisible, controlsManuallyToggled, settings.controlTimeout]);
 
@@ -97,10 +121,20 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
     if (controlsVisible) {
       setControlsVisible(false);
       setControlsManuallyToggled(true);
+      Animated.timing(controlsOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
     } else {
       setControlsVisible(true);
       setControlsManuallyToggled(false);
+      Animated.timing(controlsOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
     }
   };
@@ -115,8 +149,24 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
     let newTime = Math.max(0, Math.min(currentTime + deltaSeconds, duration));
     videoRef.current?.seek(newTime);
     setSeekFeedback(`${deltaSeconds > 0 ? '+' : ''}${Math.round(deltaSeconds)}s`);
+    
+    // Animate feedback
+    feedbackScale.setValue(0);
+    Animated.spring(feedbackScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 100,
+      friction: 8,
+    }).start();
+    
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
-    feedbackTimeout.current = setTimeout(() => setSeekFeedback(null), 800);
+    feedbackTimeout.current = setTimeout(() => {
+      Animated.timing(feedbackScale, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setSeekFeedback(null));
+    }, 800);
     showControls(); // Show controls when seeking
   };
 
@@ -124,8 +174,24 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
     const delta = direction === 'left' ? -SEEK_STEP : SEEK_STEP;
     handleSeek(delta);
     setSeekFeedback(`${direction === 'left' ? '-' : '+'}${SEEK_STEP}s`);
+    
+    // Animate feedback
+    feedbackScale.setValue(0);
+    Animated.spring(feedbackScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 100,
+      friction: 8,
+    }).start();
+    
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
-    feedbackTimeout.current = setTimeout(() => setSeekFeedback(null), 800);
+    feedbackTimeout.current = setTimeout(() => {
+      Animated.timing(feedbackScale, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setSeekFeedback(null));
+    }, 800);
     showControls(); // Show controls when seeking
   };
 
@@ -300,19 +366,20 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#000' }]} edges={isLandscape ? ['top'] : ['top', 'left', 'right']}>
-      {controlsVisible && (
-        <View style={styles.headerContainer}>
+      {/* Header Controls */}
+      <Animated.View style={[styles.headerContainer, { opacity: controlsOpacity }]}>
+        <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Icon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: '#fff' }]} numberOfLines={1} ellipsizeMode="tail">{name}</Text>
+          <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">{name}</Text>
           <TouchableOpacity style={styles.speedButton} onPress={handleSpeedPress}>
-            <Icon name="speed" size={24} color="#fff" />
+            <View style={styles.speedBadge}>
+              <Text style={styles.speedText}>{SPEEDS[speedIndex]}x</Text>
+            </View>
           </TouchableOpacity>
         </View>
-      )}
-      
-
+      </Animated.View>
       
       <GestureOverlay
         onSeek={dx => handleSeek(dx * settings.seekSensitivity)}
@@ -323,7 +390,6 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
         passGestureState
         excludeAreas={getExcludedAreas()}
         onLandscapeTap={isLandscape ? handleLandscapeTap : undefined}
-        // videoBounds={videoBounds}
       >
         <View style={styles.gestureContainer}>
           <Video
@@ -338,81 +404,110 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
             rate={SPEEDS[speedIndex]}
           />
         </View>
-        {/* Feedback overlays */}
+        
+        {/* Enhanced Feedback Overlays */}
         {seekFeedback && (
-          <View
+          <Animated.View
             style={[
               styles.feedbackCard,
+              styles.seekFeedbackCard,
               seekFeedback.startsWith('+')
                 ? styles.seekFeedbackRight
                 : styles.seekFeedbackLeft,
+              { transform: [{ scale: feedbackScale }] }
             ]}
             pointerEvents="none"
           >
+            <Icon 
+              name={seekFeedback.startsWith('+') ? 'fast-forward' : 'fast-rewind'} 
+              size={32} 
+              color="#fff" 
+              style={styles.feedbackIcon}
+            />
             <Text style={styles.feedbackText}>{seekFeedback}</Text>
-          </View>
+          </Animated.View>
         )}
+        
         {volumeFeedback && (
-          <View style={[styles.feedbackCard, styles.volumeFeedbackLeft]} pointerEvents="none">
-            <Icon name="volume-up" size={28} color="#fff" style={{ marginBottom: 4 }} />
+          <Animated.View 
+            style={[styles.feedbackCard, styles.volumeFeedbackCard, styles.volumeFeedbackLeft]} 
+            pointerEvents="none"
+          >
+            <Icon name="volume-up" size={32} color="#fff" style={styles.feedbackIcon} />
             <Text style={styles.feedbackText}>{volumeFeedback}</Text>
-          </View>
+          </Animated.View>
         )}
+        
         {brightnessFeedback && (
-          <View style={[styles.feedbackCard, styles.brightnessFeedbackRight]} pointerEvents="none">
-            <Icon name="brightness-6" size={28} color="#fff" style={{ marginBottom: 4 }} />
+          <Animated.View 
+            style={[styles.feedbackCard, styles.brightnessFeedbackCard, styles.brightnessFeedbackRight]} 
+            pointerEvents="none"
+          >
+            <Icon name="brightness-6" size={32} color="#fff" style={styles.feedbackIcon} />
             <Text style={styles.feedbackText}>{brightnessFeedback}</Text>
-          </View>
+          </Animated.View>
         )}
       </GestureOverlay>
       
-      {/* Combined controls container with shared background */}
-      {controlsVisible && (
-        <View style={styles.controlsContainer}>
-          {/* Progress bar */}
-          <View style={styles.progressBarRow}>
-            <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
-            <View style={styles.sliderContainer}>
-              <Slider
-                style={styles.progressBar}
-                value={currentTime}
-                minimumValue={0}
-                maximumValue={duration}
-                onValueChange={handleSeekBarChange}
-                minimumTrackTintColor="#fff"
-                maximumTrackTintColor="#666"
-                thumbTintColor="#fff"
-                tapToSeek={true}
-              />
-            </View>
-            <Text style={styles.timeText}>{formatTime(duration)}</Text>
+      {/* Enhanced Controls Container */}
+      <Animated.View style={[styles.controlsContainer, { opacity: controlsOpacity }]}>
+        {/* Progress Bar */}
+        <View style={styles.progressBarRow}>
+          <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
+          <View style={styles.sliderContainer}>
+            <Slider
+              style={styles.progressBar}
+              value={currentTime}
+              minimumValue={0}
+              maximumValue={duration}
+              onValueChange={handleSeekBarChange}
+              minimumTrackTintColor={theme.colors.primary}
+              maximumTrackTintColor="rgba(255,255,255,0.3)"
+              thumbTintColor={theme.colors.primary}
+              tapToSeek={true}
+            />
           </View>
-          
-          {/* Control buttons */}
-          <View style={styles.controlBar}>
-            <TouchableOpacity 
-              onPress={handleOrientationToggle} 
-              style={styles.controlBtn}
-              activeOpacity={0.7}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Icon name={isLandscape ? "screen-rotation" : "screen-lock-rotation"} size={36} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSeek(-10)} style={styles.controlBtn}>
-              <Icon name="replay-10" size={36} color="#fff" />
-            </TouchableOpacity>
-                      <TouchableOpacity onPress={() => setPaused(p => !p)} style={styles.controlBtn}>
-            <Icon name={paused ? 'play-arrow' : 'pause'} size={42} color="#fff" />
-          </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSeek(10)} style={styles.controlBtn}>
-              <Icon name="forward-10" size={36} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.controlBtn}>
-              <Icon name="settings" size={36} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.timeText}>{formatTime(duration)}</Text>
         </View>
-      )}
+        
+        {/* Control Buttons */}
+        <View style={styles.controlBar}>
+          <TouchableOpacity 
+            onPress={handleOrientationToggle} 
+            style={styles.controlBtn}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <View style={styles.controlBtnBackground}>
+              <Icon name={isLandscape ? "screen-rotation" : "screen-lock-rotation"} size={24} color="#fff" />
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={() => handleSeek(-10)} style={styles.controlBtn}>
+            <View style={styles.controlBtnBackground}>
+              <Icon name="replay-10" size={24} color="#fff" />
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={() => setPaused(p => !p)} style={styles.playPauseBtn}>
+            <View style={styles.playPauseBackground}>
+              <Icon name={paused ? 'play-arrow' : 'pause'} size={36} color="#fff" />
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={() => handleSeek(10)} style={styles.controlBtn}>
+            <View style={styles.controlBtnBackground}>
+              <Icon name="forward-10" size={24} color="#fff" />
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.controlBtn}>
+            <View style={styles.controlBtnBackground}>
+              <Icon name="settings" size={24} color="#fff" />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
     </SafeAreaView>
   );
 };
@@ -426,28 +521,204 @@ function formatTime(sec: number) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  gestureContainer: { flex: 1, width: '100%', height: '100%' },
-  headerContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 0, paddingBottom: 8, zIndex: 2, backgroundColor: 'rgba(0,0,0,0.6)', width: '100%' },
-  backButton: { padding: 8 },
-  title: { flex: 1, color: '#fff', fontSize: 16, textAlign: 'center', marginHorizontal: 16 },
-  speedButton: { padding: 8 },
-  video: { flex: 1, width: '100%' },
-  controlsContainer: { position: 'absolute', bottom: 16, left: 0, right: 0, zIndex: 20, backgroundColor: 'rgba(0,0,0,0.6)' },
-  controlBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 4, paddingBottom: 8, paddingHorizontal: 16 },
-  controlBtn: { padding: 12, alignItems: 'center', justifyContent: 'center', minWidth: 48, minHeight: 48 },
-  progressBarRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
-  progressBar: { flex: 1, marginHorizontal: 8 },
-  sliderContainer: { flex: 1, paddingVertical: 12, justifyContent: 'center' },
-  timeText: { color: '#fff', fontSize: 12, width: 40, textAlign: 'center' },
-  feedbackCard: { borderRadius: 16, padding: 16, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', maxWidth: 220, minWidth: 120 },
-  feedbackText: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
-  seekFeedbackLeft: { position: 'absolute', top: '50%', left: '15%', alignItems: 'flex-start', zIndex: 10, justifyContent: 'center', transform: [{ translateY: -50 }] },
-  seekFeedbackRight: { position: 'absolute', top: '50%', right: '15%', alignItems: 'flex-end', zIndex: 10, justifyContent: 'center', transform: [{ translateY: -50 }] },
-  volumeFeedbackLeft: { position: 'absolute', top: '50%', left: '15%', alignItems: 'flex-start', zIndex: 10, justifyContent: 'center', transform: [{ translateY: -50 }] },
-  brightnessFeedbackRight: { position: 'absolute', top: '50%', right: '15%', alignItems: 'flex-end', zIndex: 10, justifyContent: 'center', transform: [{ translateY: -50 }] },
-  brightnessTestRow: { position: 'absolute', bottom: 32, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', zIndex: 20 },
-  brightnessTestBtn: { backgroundColor: '#333', padding: 10, marginHorizontal: 8, borderRadius: 6 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#000' 
+  },
+  gestureContainer: { 
+    flex: 1, 
+    width: '100%', 
+    height: '100%' 
+  },
+  headerContainer: { 
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  headerContent: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: { 
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  title: { 
+    flex: 1, 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: '600',
+    textAlign: 'center', 
+    marginHorizontal: 16 
+  },
+  speedButton: { 
+    padding: 4 
+  },
+  speedBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  speedText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  video: { 
+    flex: 1, 
+    width: '100%' 
+  },
+  controlsContainer: { 
+    position: 'absolute', 
+    bottom: 16, 
+    left: 16, 
+    right: 16, 
+    zIndex: 20, 
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    borderRadius: 16,
+    padding: 16,
+  },
+  controlBar: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingTop: 16,
+  },
+  controlBtn: { 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    minWidth: 48, 
+    minHeight: 48 
+  },
+  controlBtnBackground: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 24,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playPauseBtn: {
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    minWidth: 64, 
+    minHeight: 64 
+  },
+  playPauseBackground: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 32,
+    width: 64,
+    height: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressBarRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingBottom: 8,
+  },
+  progressBar: { 
+    flex: 1, 
+    marginHorizontal: 12,
+    height: 4,
+  },
+  sliderContainer: { 
+    flex: 1, 
+    paddingVertical: 8, 
+    justifyContent: 'center' 
+  },
+  timeText: { 
+    color: '#fff', 
+    fontSize: 12, 
+    fontWeight: '500',
+    width: 40, 
+    textAlign: 'center' 
+  },
+  feedbackCard: { 
+    borderRadius: 20, 
+    padding: 20, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    alignSelf: 'center', 
+    maxWidth: 160, 
+    minWidth: 120,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  seekFeedbackCard: {
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  volumeFeedbackCard: {
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  brightnessFeedbackCard: {
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  feedbackText: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  feedbackIcon: {
+    marginBottom: 4,
+  },
+  seekFeedbackLeft: { 
+    position: 'absolute', 
+    top: '50%', 
+    left: '15%', 
+    alignItems: 'flex-start', 
+    zIndex: 10, 
+    justifyContent: 'center', 
+    transform: [{ translateY: -50 }] 
+  },
+  seekFeedbackRight: { 
+    position: 'absolute', 
+    top: '50%', 
+    right: '15%', 
+    alignItems: 'flex-end', 
+    zIndex: 10, 
+    justifyContent: 'center', 
+    transform: [{ translateY: -50 }] 
+  },
+  volumeFeedbackLeft: { 
+    position: 'absolute', 
+    top: '50%', 
+    left: '15%', 
+    alignItems: 'flex-start', 
+    zIndex: 10, 
+    justifyContent: 'center', 
+    transform: [{ translateY: -50 }] 
+  },
+  brightnessFeedbackRight: { 
+    position: 'absolute', 
+    top: '50%', 
+    right: '15%', 
+    alignItems: 'flex-end', 
+    zIndex: 10, 
+    justifyContent: 'center', 
+    transform: [{ translateY: -50 }] 
+  },
 });
 
 export default VideoPlayerScreen; 

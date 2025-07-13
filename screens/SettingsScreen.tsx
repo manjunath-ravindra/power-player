@@ -3,10 +3,11 @@ import { View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity, Dimensions
 import { Switch, Slider } from 'react-native-elements';
 import { useSettings } from '../settings/SettingsContext';
 import { useTheme } from '../theme/ThemeContext';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const SettingsScreen: React.FC = () => {
   const { settings, updateSetting } = useSettings();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [currentSetting, setCurrentSetting] = useState<string>('');
   const [tempValue, setTempValue] = useState<number>(0);
@@ -61,6 +62,26 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
+  const getSettingIcon = (setting: string) => {
+    switch (setting) {
+      case 'seekSensitivity': return 'fast-forward';
+      case 'volumeSensitivity': return 'volume-up';
+      case 'brightnessSensitivity': return 'brightness-6';
+      case 'controlTimeout': return 'timer';
+      default: return 'settings';
+    }
+  };
+
+  const getSettingDescription = (setting: string) => {
+    switch (setting) {
+      case 'seekSensitivity': return 'Adjust how sensitive horizontal swipes are for seeking';
+      case 'volumeSensitivity': return 'Adjust how sensitive vertical swipes are for volume control';
+      case 'brightnessSensitivity': return 'Adjust how sensitive vertical swipes are for brightness control';
+      case 'controlTimeout': return 'How long controls stay visible before auto-hiding';
+      default: return '';
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
       <ScrollView 
@@ -68,70 +89,193 @@ const SettingsScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
-      <View style={styles.row}>
-        <Text style={[styles.label, { color: theme.colors.text }]}>Enable Volume Gesture</Text>
-        <Switch
-          value={settings.volumeGesture}
-          onValueChange={v => updateSetting('volumeGesture', v)}
-          color={theme.colors.primary}
-        />
-      </View>
-      <View style={styles.row}>
-        <Text style={[styles.label, { color: theme.colors.text }]}>Enable Brightness Gesture</Text>
-        <Switch
-          value={settings.brightnessGesture}
-          onValueChange={v => updateSetting('brightnessGesture', v)}
-          color={theme.colors.primary}
-        />
-      </View>
-      <TouchableOpacity 
-        style={styles.settingRow}
-        onPress={() => {
-          setCurrentSetting('seekSensitivity');
-          setTempValue(settings.seekSensitivity);
-          setModalVisible(true);
-        }}
-      >
-        <Text style={[styles.label, { color: theme.colors.text }]}>Seek Sensitivity</Text>
-        <Text style={{ color: theme.colors.text, width: 40, textAlign: 'right' }}>{settings.seekSensitivity.toFixed(2)}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity 
-        style={styles.settingRow}
-        onPress={() => {
-          setCurrentSetting('volumeSensitivity');
-          setTempValue(settings.volumeSensitivity);
-          setModalVisible(true);
-        }}
-      >
-        <Text style={[styles.label, { color: theme.colors.text }]}>Volume Sensitivity</Text>
-        <Text style={{ color: theme.colors.text, width: 40, textAlign: 'right' }}>{settings.volumeSensitivity.toFixed(2)}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity 
-        style={styles.settingRow}
-        onPress={() => {
-          setCurrentSetting('brightnessSensitivity');
-          setTempValue(settings.brightnessSensitivity);
-          setModalVisible(true);
-        }}
-      >
-        <Text style={[styles.label, { color: theme.colors.text }]}>Brightness Sensitivity</Text>
-        <Text style={{ color: theme.colors.text, width: 40, textAlign: 'right' }}>{settings.brightnessSensitivity.toFixed(2)}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity 
-        style={styles.settingRow}
-        onPress={() => {
-          setCurrentSetting('controlTimeout');
-          setTempValue(settings.controlTimeout);
-          setModalVisible(true);
-        }}
-      >
-        <Text style={[styles.label, { color: theme.colors.text }]}>Control Timeout (seconds)</Text>
-        <Text style={{ color: theme.colors.text, width: 40, textAlign: 'right' }}>{settings.controlTimeout}s</Text>
-              </TouchableOpacity>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
+          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+            Customize your video player experience
+          </Text>
+        </View>
+
+        {/* Theme Toggle */}
+        <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+          <View style={styles.sectionHeader}>
+            <Icon name="palette" size={24} color={theme.colors.primary} />
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Appearance</Text>
+          </View>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: theme.colors.text }]}>Dark Mode</Text>
+              <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
+                Switch between light and dark themes
+              </Text>
+            </View>
+            <Switch
+              value={theme.mode === 'dark'}
+              onValueChange={toggleTheme}
+              color={theme.colors.primary}
+            />
+          </View>
+        </View>
+
+        {/* Gesture Controls */}
+        <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+          <View style={styles.sectionHeader}>
+            <Icon name="touch-app" size={24} color={theme.colors.primary} />
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Gesture Controls</Text>
+          </View>
+          
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: theme.colors.text }]}>Volume Gesture</Text>
+              <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
+                Enable vertical swipe on right side for volume control
+              </Text>
+            </View>
+            <Switch
+              value={settings.volumeGesture}
+              onValueChange={v => updateSetting('volumeGesture', v)}
+              color={theme.colors.primary}
+            />
+          </View>
+          
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: theme.colors.text }]}>Brightness Gesture</Text>
+              <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
+                Enable vertical swipe on left side for brightness control
+              </Text>
+            </View>
+            <Switch
+              value={settings.brightnessGesture}
+              onValueChange={v => updateSetting('brightnessGesture', v)}
+              color={theme.colors.primary}
+            />
+          </View>
+        </View>
+
+        {/* Sensitivity Settings */}
+        <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+          <View style={styles.sectionHeader}>
+            <Icon name="tune" size={24} color={theme.colors.primary} />
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Sensitivity</Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.settingRow}
+            onPress={() => {
+              setCurrentSetting('seekSensitivity');
+              setTempValue(settings.seekSensitivity);
+              setModalVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={styles.settingInfo}>
+              <View style={styles.settingHeader}>
+                <Icon name={getSettingIcon('seekSensitivity')} size={20} color={theme.colors.primary} />
+                <Text style={[styles.settingLabel, { color: theme.colors.text }]}>Seek Sensitivity</Text>
+              </View>
+              <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
+                {getSettingDescription('seekSensitivity')}
+              </Text>
+            </View>
+            <View style={styles.valueContainer}>
+              <Text style={[styles.valueText, { color: theme.colors.primary }]}>
+                {settings.seekSensitivity.toFixed(2)}
+              </Text>
+              <Icon name="chevron-right" size={20} color={theme.colors.textSecondary} />
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.settingRow}
+            onPress={() => {
+              setCurrentSetting('volumeSensitivity');
+              setTempValue(settings.volumeSensitivity);
+              setModalVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={styles.settingInfo}>
+              <View style={styles.settingHeader}>
+                <Icon name={getSettingIcon('volumeSensitivity')} size={20} color={theme.colors.primary} />
+                <Text style={[styles.settingLabel, { color: theme.colors.text }]}>Volume Sensitivity</Text>
+              </View>
+              <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
+                {getSettingDescription('volumeSensitivity')}
+              </Text>
+            </View>
+            <View style={styles.valueContainer}>
+              <Text style={[styles.valueText, { color: theme.colors.primary }]}>
+                {settings.volumeSensitivity.toFixed(2)}
+              </Text>
+              <Icon name="chevron-right" size={20} color={theme.colors.textSecondary} />
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.settingRow}
+            onPress={() => {
+              setCurrentSetting('brightnessSensitivity');
+              setTempValue(settings.brightnessSensitivity);
+              setModalVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={styles.settingInfo}>
+              <View style={styles.settingHeader}>
+                <Icon name={getSettingIcon('brightnessSensitivity')} size={20} color={theme.colors.primary} />
+                <Text style={[styles.settingLabel, { color: theme.colors.text }]}>Brightness Sensitivity</Text>
+              </View>
+              <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
+                {getSettingDescription('brightnessSensitivity')}
+              </Text>
+            </View>
+            <View style={styles.valueContainer}>
+              <Text style={[styles.valueText, { color: theme.colors.primary }]}>
+                {settings.brightnessSensitivity.toFixed(2)}
+              </Text>
+              <Icon name="chevron-right" size={20} color={theme.colors.textSecondary} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Player Settings */}
+        <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
+          <View style={styles.sectionHeader}>
+            <Icon name="play-circle-outline" size={24} color={theme.colors.primary} />
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Player</Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.settingRow}
+            onPress={() => {
+              setCurrentSetting('controlTimeout');
+              setTempValue(settings.controlTimeout);
+              setModalVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={styles.settingInfo}>
+              <View style={styles.settingHeader}>
+                <Icon name={getSettingIcon('controlTimeout')} size={20} color={theme.colors.primary} />
+                <Text style={[styles.settingLabel, { color: theme.colors.text }]}>Control Timeout</Text>
+              </View>
+              <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
+                {getSettingDescription('controlTimeout')}
+              </Text>
+            </View>
+            <View style={styles.valueContainer}>
+              <Text style={[styles.valueText, { color: theme.colors.primary }]}>
+                {settings.controlTimeout}s
+              </Text>
+              <Icon name="chevron-right" size={20} color={theme.colors.textSecondary} />
+            </View>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
-      {/* Slider Modal */}
+      {/* Enhanced Slider Modal */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -140,8 +284,15 @@ const SettingsScreen: React.FC = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
-              {getSettingTitle(currentSetting)}
+            <View style={styles.modalHeader}>
+              <Icon name={getSettingIcon(currentSetting)} size={28} color={theme.colors.primary} />
+              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                {getSettingTitle(currentSetting)}
+              </Text>
+            </View>
+            
+            <Text style={[styles.modalDescription, { color: theme.colors.textSecondary }]}>
+              {getSettingDescription(currentSetting)}
             </Text>
             
             <View style={styles.sliderContainer}>
@@ -153,28 +304,31 @@ const SettingsScreen: React.FC = () => {
                 step={getStepValue(currentSetting)}
                 thumbTintColor={theme.colors.primary}
                 minimumTrackTintColor={theme.colors.primary}
+                maximumTrackTintColor={theme.colors.border}
                 style={styles.modalSlider}
               />
-              <Text style={[styles.modalValue, { color: theme.colors.text }]}>
-                {getFormattedValue(currentSetting, tempValue)}
-              </Text>
+              <View style={styles.valueDisplay}>
+                <Text style={[styles.modalValue, { color: theme.colors.primary }]}>
+                  {getFormattedValue(currentSetting, tempValue)}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity 
-                style={[styles.modalButton, { backgroundColor: theme.colors.background }]}
+                style={[styles.modalButton, styles.cancelButton, { backgroundColor: theme.colors.surface }]}
                 onPress={() => setModalVisible(false)}
               >
                 <Text style={[styles.modalButtonText, { color: theme.colors.text }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
+                style={[styles.modalButton, styles.saveButton, { backgroundColor: theme.colors.primary }]}
                 onPress={() => {
                   updateSetting(currentSetting as keyof typeof settings, tempValue);
                   setModalVisible(false);
                 }}
               >
-                <Text style={[styles.modalButtonText, { color: '#fff' }]}>Save</Text>
+                <Text style={[styles.modalButtonText, { color: theme.colors.background }]}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -185,23 +339,157 @@ const SettingsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollView: { flex: 1 },
-  scrollContent: { padding: 24, paddingBottom: 40 },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 24 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
-  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.05)' },
-  sliderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  label: { fontSize: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: Dimensions.get('window').width * 0.8, padding: 24, borderRadius: 16, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  sliderContainer: { marginBottom: 24 },
-  modalSlider: { width: '100%', height: 40 },
-  modalValue: { fontSize: 16, textAlign: 'center', marginTop: 8 },
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between' },
-  modalButton: { flex: 1, padding: 12, borderRadius: 8, marginHorizontal: 8 },
-  modalButtonText: { fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+  container: { 
+    flex: 1 
+  },
+  scrollView: { 
+    flex: 1 
+  },
+  scrollContent: { 
+    padding: 16, 
+    paddingBottom: 40 
+  },
+  header: {
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+  title: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    marginBottom: 8 
+  },
+  subtitle: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  section: {
+    borderRadius: 16,
+    marginBottom: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 12,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  settingInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  settingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  settingLabel: { 
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  settingDescription: {
+    fontSize: 14,
+    lineHeight: 18,
+    marginLeft: 28,
+  },
+  valueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  valueText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  modalContent: { 
+    width: Dimensions.get('window').width * 0.85, 
+    padding: 24, 
+    borderRadius: 20, 
+    elevation: 8, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.25, 
+    shadowRadius: 8 
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    marginLeft: 12,
+  },
+  modalDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  sliderContainer: { 
+    marginBottom: 32 
+  },
+  modalSlider: { 
+    width: '100%', 
+    height: 40 
+  },
+  valueDisplay: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  modalValue: { 
+    fontSize: 24, 
+    fontWeight: 'bold',
+  },
+  modalButtons: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between' 
+  },
+  modalButton: { 
+    flex: 1, 
+    padding: 16, 
+    borderRadius: 12, 
+    marginHorizontal: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  saveButton: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  modalButtonText: { 
+    fontSize: 16, 
+    fontWeight: '600',
+  },
 });
 
 export default SettingsScreen; 

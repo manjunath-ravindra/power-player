@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, StyleSheet, Dimensions } from 'react-native';
 import { requestStoragePermission } from '../utils/permissions';
 import { scanForVideos, FolderNode, VideoFile } from '../utils/videoScanner';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -9,8 +9,11 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import RNFS from 'react-native-fs';
 import { useFocusEffect } from '@react-navigation/native';
 import brightnessManager from '../utils/brightnessManager';
+import EmptyState from '../components/EmptyState';
 
 type Props = StackScreenProps<any, 'MediaLibrary'>;
+
+const { width: screenWidth } = Dimensions.get('window');
 
 const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
@@ -127,136 +130,259 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
 
   if (permissionGranted === null) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
-        <Text style={{ color: theme.colors.text }}>Requesting storage permission...</Text>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={[styles.centerText, { color: theme.colors.text }]}>
+            Requesting storage permission...
+          </Text>
+        </View>
       </View>
     );
   }
 
   if (!permissionGranted) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
-        <Text style={{ color: theme.colors.text }}>Storage permission denied. Please enable it in settings to use the media library.</Text>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <EmptyState
+          title="Storage Permission Required"
+          subtitle="Please enable storage permission in settings to access your video files"
+          icon="folder-off"
+          showAnimation={false}
+        />
       </View>
     );
   }
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ color: theme.colors.text }}>Loading...</Text>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={[styles.centerText, { color: theme.colors.text }]}>Loading...</Text>
+        </View>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
-        <Text style={{ color: theme.colors.text }}>{error}</Text>
-        <TouchableOpacity onPress={loadCurrentDirectory} style={{ marginTop: 16, padding: 12, backgroundColor: theme.colors.primary, borderRadius: 8 }}>
-          <Text style={{ color: theme.colors.background }}>Retry</Text>
-        </TouchableOpacity>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.centerContent}>
+          <Icon name="error-outline" size={64} color={theme.colors.error} />
+          <Text style={[styles.centerText, { color: theme.colors.text, marginTop: 16 }]}>{error}</Text>
+          <TouchableOpacity 
+            onPress={loadCurrentDirectory} 
+            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+          >
+            <Text style={[styles.retryButtonText, { color: theme.colors.background }]}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   const renderItem = ({ item }: { item: FolderNode | VideoFile }) => (
     <TouchableOpacity
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-        backgroundColor: theme.colors.background
-      }}
+      style={[
+        styles.itemCard,
+        { 
+          backgroundColor: theme.colors.card,
+          borderColor: theme.colors.border,
+        }
+      ]}
       onPress={() => item.isFile ? handleVideoPress(item) : navigateToFolder(item.path)}
+      activeOpacity={0.7}
     >
-      <Icon 
-        name={item.isFile ? 'video-file' : 'folder'} 
-        size={24} 
-        color={item.isFile ? theme.colors.primary : '#FFD700'} 
-        style={{ marginRight: 12 }}
-      />
-      <View style={{ flex: 1 }}>
-        <Text 
-          style={{ 
-            color: theme.colors.text, 
-            fontSize: 16,
-            fontWeight: item.isFile ? 'normal' : 'bold'
-          }}
-          numberOfLines={1}
-        >
-          {item.name}
-        </Text>
-        {item.isFile && (
-          <Text style={{ color: '#666', fontSize: 12, marginTop: 2 }}>
-            Video file
+      <View style={styles.itemContent}>
+        <View style={[
+          styles.iconContainer,
+          { 
+            backgroundColor: item.isFile 
+              ? theme.colors.primary + '20' 
+              : theme.colors.accent + '20' 
+          }
+        ]}>
+          <Icon 
+            name={item.isFile ? 'video-file' : 'folder'} 
+            size={24} 
+            color={item.isFile ? theme.colors.primary : theme.colors.accent} 
+          />
+        </View>
+        
+        <View style={styles.itemTextContainer}>
+          <Text 
+            style={[styles.itemTitle, { color: theme.colors.text }]}
+            numberOfLines={2}
+          >
+            {item.name}
           </Text>
+          {item.isFile && (
+            <Text style={[styles.itemSubtitle, { color: theme.colors.textSecondary }]}>
+              Video file
+            </Text>
+          )}
+        </View>
+        
+        {!item.isFile && (
+          <Icon name="chevron-right" size={20} color={theme.colors.textSecondary} />
         )}
       </View>
-      {!item.isFile && (
-        <Icon name="chevron-right" size={20} color="#666" />
-      )}
     </TouchableOpacity>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Path Navigation Bar */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-        backgroundColor: theme.colors.background
-      }}>
-        <TouchableOpacity
-          onPress={navigateToRoot}
-          style={{ marginRight: 12 }}
-        >
-          <Icon name="home" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
-        
-        {pathHistory.length > 0 && (
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Enhanced Path Navigation Bar */}
+      <View style={[
+        styles.navigationBar,
+        { 
+          backgroundColor: theme.colors.surface,
+          borderBottomColor: theme.colors.border,
+        }
+      ]}>
+        <View style={styles.navigationContent}>
           <TouchableOpacity
-            onPress={navigateBack}
-            style={{ marginRight: 12 }}
+            onPress={navigateToRoot}
+            style={[styles.navButton, { backgroundColor: theme.colors.primary + '20' }]}
           >
-            <Icon name="arrow-back" size={24} color={theme.colors.primary} />
+            <Icon name="home" size={20} color={theme.colors.primary} />
           </TouchableOpacity>
-        )}
-        
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: 'bold' }}>
-            {getPathDisplay()}
-          </Text>
+          
+          {pathHistory.length > 0 && (
+            <TouchableOpacity
+              onPress={navigateBack}
+              style={[styles.navButton, { backgroundColor: theme.colors.primary + '20' }]}
+            >
+              <Icon name="arrow-back" size={20} color={theme.colors.primary} />
+            </TouchableOpacity>
+          )}
+          
+          <View style={styles.pathContainer}>
+            <Text style={[styles.pathText, { color: theme.colors.text }]} numberOfLines={1}>
+              {getPathDisplay()}
+            </Text>
+          </View>
         </View>
       </View>
 
       {/* Content */}
       {currentItems.length === 0 ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Icon name="folder-open" size={64} color="#666" />
-          <Text style={{ color: theme.colors.text, fontSize: 16, marginTop: 16 }}>
-            No videos found in this folder
-          </Text>
-          <Text style={{ color: '#666', fontSize: 14, marginTop: 8, textAlign: 'center' }}>
-            Navigate to folders that contain video files
-          </Text>
-        </View>
+        <EmptyState
+          title="No Videos Found"
+          subtitle="Navigate to folders that contain video files to start watching"
+          icon="folder-open"
+        />
       ) : (
         <FlatList
           data={currentItems}
           renderItem={renderItem}
           keyExtractor={(item) => item.path}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContainer}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  centerText: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  centerSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 24,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  navigationBar: {
+    borderBottomWidth: 1,
+    paddingVertical: 16,
+  },
+  navigationContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  navButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  pathContainer: {
+    flex: 1,
+  },
+  pathText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  listContainer: {
+    padding: 16,
+  },
+  separator: {
+    height: 12,
+  },
+  itemCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  itemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  itemTextContainer: {
+    flex: 1,
+  },
+  itemTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    lineHeight: 22,
+  },
+  itemSubtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+});
 
 export default MediaLibraryScreen; 

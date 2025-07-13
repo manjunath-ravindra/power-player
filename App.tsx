@@ -21,6 +21,7 @@ import brightnessManager from './utils/brightnessManager';
 import { TransitionSpecs, CardStyleInterpolators } from '@react-navigation/stack';
 import RNFS from 'react-native-fs';
 import type { MediaLibraryParamList } from './screens/MediaLibraryScreen';
+import { StackActions } from '@react-navigation/native';
 
 // Extend MediaLibraryParamList to include Settings
 export type AppStackParamList = MediaLibraryParamList & {
@@ -134,33 +135,31 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
       >
         <Stack.Navigator 
           initialRouteName="MediaLibrary"
-          screenOptions={({ route }) => {
-            return {
-              headerStyle: {
-                backgroundColor: theme.colors.background,
-                elevation: 0,
-                shadowOpacity: 0,
-                borderBottomWidth: 1,
-                borderBottomColor: theme.colors.border,
-              },
-              headerTintColor: theme.colors.text,
-              headerTitleStyle: {
-                color: theme.colors.text,
-                fontSize: 18,
-                fontWeight: '600',
-              },
-              headerTitleAlign: 'center' as const,
-              cardStyle: {
-                backgroundColor: theme.colors.background,
-              },
-              gestureEnabled: true,
-              transitionSpec: {
-                open: TransitionSpecs.TransitionIOSSpec,
-                close: TransitionSpecs.TransitionIOSSpec,
-              },
-              cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
-            };
-          }}
+          screenOptions={({ route }) => ({
+            headerStyle: {
+              backgroundColor: theme.colors.background,
+              elevation: 0,
+              shadowOpacity: 0,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.border,
+            },
+            headerTintColor: theme.colors.text,
+            headerTitleStyle: {
+              color: theme.colors.text,
+              fontSize: 18,
+              fontWeight: '600',
+            },
+            headerTitleAlign: 'center' as const,
+            cardStyle: {
+              backgroundColor: theme.colors.background,
+            },
+            gestureEnabled: true,
+            transitionSpec: {
+              open: TransitionSpecs.TransitionIOSSpec,
+              close: TransitionSpecs.TransitionIOSSpec,
+            },
+            cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+          })}
         >
           <Stack.Screen 
             name="MediaLibrary" 
@@ -172,7 +171,11 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
                 <TouchableOpacity
                   style={[styles.headerButton, { backgroundColor: theme.colors.primary + '20' }]}
                   onPress={() => {
-                    navigation.push('MediaLibrary', { path: RNFS.ExternalStorageDirectoryPath });
+                    // Only pop to top if not already at root
+                    const state = navigation.getState();
+                    if (state.index > 0) {
+                      navigation.popToTop();
+                    }
                   }}
                   activeOpacity={0.7}
                 >

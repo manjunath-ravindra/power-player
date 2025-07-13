@@ -13,7 +13,7 @@ import EmptyState from '../components/EmptyState';
 
 // Extend RootStackParamList to allow path param for MediaLibrary
 export type MediaLibraryParamList = {
-  MediaLibrary: { path?: string; resetToRoot?: boolean; showFilters?: boolean } | undefined;
+  MediaLibrary: { path?: string; resetToRoot?: boolean; showFilters?: boolean; fromHomeButton?: boolean } | undefined;
   VideoPlayer: { path: string; name: string };
 };
 
@@ -301,11 +301,18 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
       <Modal
         visible={showFiltersModal}
         transparent={true}
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowFiltersModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFiltersModal(false)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}
+            // Prevent closing when tapping inside the modal content
+            onStartShouldSetResponder={() => true}
+          >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Display Options</Text>
               <TouchableOpacity
@@ -410,7 +417,7 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );

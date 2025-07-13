@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import brightnessManager from '../utils/brightnessManager';
 
 export type RootStackParamList = {
-  MediaLibrary: undefined;
+  MediaLibrary: { resetToRoot?: boolean; showFilters?: boolean } | undefined;
   VideoPlayer: { path: string; name: string };
 };
 
@@ -149,24 +149,8 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
     let newTime = Math.max(0, Math.min(currentTime + deltaSeconds, duration));
     videoRef.current?.seek(newTime);
     setSeekFeedback(`${deltaSeconds > 0 ? '+' : ''}${Math.round(deltaSeconds)}s`);
-    
-    // Animate feedback
-    feedbackScale.setValue(0);
-    Animated.spring(feedbackScale, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 100,
-      friction: 8,
-    }).start();
-    
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
-    feedbackTimeout.current = setTimeout(() => {
-      Animated.timing(feedbackScale, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => setSeekFeedback(null));
-    }, 800);
+    feedbackTimeout.current = setTimeout(() => setSeekFeedback(null), 800);
     showControls(); // Show controls when seeking
   };
 
@@ -174,24 +158,8 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
     const delta = direction === 'left' ? -SEEK_STEP : SEEK_STEP;
     handleSeek(delta);
     setSeekFeedback(`${direction === 'left' ? '-' : '+'}${SEEK_STEP}s`);
-    
-    // Animate feedback
-    feedbackScale.setValue(0);
-    Animated.spring(feedbackScale, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 100,
-      friction: 8,
-    }).start();
-    
     if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
-    feedbackTimeout.current = setTimeout(() => {
-      Animated.timing(feedbackScale, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => setSeekFeedback(null));
-    }, 800);
+    feedbackTimeout.current = setTimeout(() => setSeekFeedback(null), 800);
     showControls(); // Show controls when seeking
   };
 
@@ -407,14 +375,11 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
         
         {/* Enhanced Feedback Overlays */}
         {seekFeedback && (
-          <Animated.View
+          <View
             style={[
-              styles.feedbackCard,
-              styles.seekFeedbackCard,
               seekFeedback.startsWith('+')
                 ? styles.seekFeedbackRight
                 : styles.seekFeedbackLeft,
-              { transform: [{ scale: feedbackScale }] }
             ]}
             pointerEvents="none"
           >
@@ -425,7 +390,7 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
               style={styles.feedbackIcon}
             />
             <Text style={styles.feedbackText}>{seekFeedback}</Text>
-          </Animated.View>
+          </View>
         )}
         
         {volumeFeedback && (

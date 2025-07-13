@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, StyleSheet, Dimensions, Modal } from 'react-native';
 import { requestStoragePermission } from '../utils/permissions';
 import { scanForVideos, FolderNode, VideoFile } from '../utils/videoScanner';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -11,18 +11,42 @@ import { useFocusEffect } from '@react-navigation/native';
 import brightnessManager from '../utils/brightnessManager';
 import EmptyState from '../components/EmptyState';
 
-type Props = StackScreenProps<any, 'MediaLibrary'>;
+type Props = StackScreenProps<RootStackParamList, 'MediaLibrary'>;
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
+const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentPath, setCurrentPath] = useState<string>(RNFS.ExternalStorageDirectoryPath);
   const [currentItems, setCurrentItems] = useState<Array<FolderNode | VideoFile>>([]);
   const [pathHistory, setPathHistory] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<string>('fileSize');
   const { theme, toggleTheme } = useTheme();
+
+  // Handle navigation parameters
+  useEffect(() => {
+    if (route.params?.resetToRoot) {
+      navigateToRoot();
+      // Clear the parameter to prevent repeated resets
+      navigation.setParams({ resetToRoot: undefined });
+    }
+    if (route.params?.showFilters) {
+      setShowFiltersModal(true);
+      // Clear the parameter to prevent repeated opens
+      navigation.setParams({ showFilters: undefined });
+    }
+  }, [route.params?.resetToRoot, route.params?.showFilters]);
 
   useEffect(() => {
     (async () => {
@@ -47,6 +71,8 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
 
   const loadCurrentDirectory = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
       const items = await RNFS.readDir(currentPath);
       const videoExtensions = ['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv', '3gp', 'mpeg', 'mpg', 'm4v'];
@@ -54,31 +80,72 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
       const folders: FolderNode[] = [];
       const videos: VideoFile[] = [];
       
-      for (const item of items) {
-        if (item.isDirectory()) {
-          // Check if folder contains videos
+      // Process items in batches to avoid blocking the UI
+      const batchSize = 10;
+      for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        
+        for (const item of batch) {
           try {
-            const subItems = await RNFS.readDir(item.path);
-            const hasVideos = subItems.some(subItem => 
-              subItem.isFile() && videoExtensions.includes(subItem.name.split('.').pop()?.toLowerCase() || '')
-            );
-            if (hasVideos) {
-              folders.push({
-                name: item.name,
-                path: item.path,
-                isFile: false,
-                children: []
-              });
+            if (item.isDirectory()) {
+              // Check if folder contains videos (with timeout)
+              try {
+                const subItems = await Promise.race([
+                  RNFS.readDir(item.path),
+                  new Promise<never>((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout')), 2000)
+                  )
+                ]) as RNFS.ReadDirItem[];
+                
+                const hasVideos = subItems.some((subItem: RNFS.ReadDirItem) => 
+                  subItem.isFile() && videoExtensions.includes(subItem.name.split('.').pop()?.toLowerCase() || '')
+                );
+                
+                if (hasVideos) {
+                  folders.push({
+                    name: item.name,
+                    path: item.path,
+                    isFile: false,
+                    children: []
+                  });
+                }
+              } catch (e) {
+                // Skip folders we can't access or that timeout
+                console.warn(`Skipping folder ${item.name}:`, e);
+              }
+            } else if (item.isFile() && videoExtensions.includes(item.name.split('.').pop()?.toLowerCase() || '')) {
+              // Get file stats for additional information
+              try {
+                const stats = await RNFS.stat(item.path);
+                const fileSize = formatFileSize(stats.size);
+                const lastModified = new Date(stats.mtime).toLocaleDateString();
+                
+                videos.push({
+                  name: item.name,
+                  path: item.path,
+                  isFile: true,
+                  fileSize,
+                  lastModified,
+                  resolution: 'Unknown', // Will be updated later if needed
+                  duration: 'Unknown'    // Will be updated later if needed
+                });
+              } catch (e) {
+                // Fallback if stats can't be read
+                videos.push({
+                  name: item.name,
+                  path: item.path,
+                  isFile: true
+                });
+              }
             }
           } catch (e) {
-            // Skip folders we can't access
+            console.warn(`Error processing item ${item.name}:`, e);
           }
-        } else if (item.isFile() && videoExtensions.includes(item.name.split('.').pop()?.toLowerCase() || '')) {
-          videos.push({
-            name: item.name,
-            path: item.path,
-            isFile: true
-          });
+        }
+        
+        // Allow UI to update between batches
+        if (i + batchSize < items.length) {
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
       }
       
@@ -89,9 +156,9 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
       ];
       
       setCurrentItems(sortedItems);
-      setError(null);
     } catch (e) {
-      setError('Failed to load directory contents.');
+      console.error('Failed to load directory contents:', e);
+      setError('Failed to load directory contents. Please check your storage permissions.');
     } finally {
       setLoading(false);
     }
@@ -102,14 +169,6 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
     setCurrentPath(folderPath);
   };
 
-  const navigateBack = () => {
-    if (pathHistory.length > 0) {
-      const newPath = pathHistory[pathHistory.length - 1];
-      setCurrentPath(newPath);
-      setPathHistory(prev => prev.slice(0, -1));
-    }
-  };
-
   const navigateToRoot = () => {
     setCurrentPath(RNFS.ExternalStorageDirectoryPath);
     setPathHistory([]);
@@ -117,15 +176,6 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleVideoPress = (video: VideoFile) => {
     navigation.navigate('VideoPlayer', { path: video.path, name: video.name });
-  };
-
-  const getPathDisplay = () => {
-    const pathParts = currentPath.split('/');
-    const displayParts = pathParts.slice(-3); // Show last 3 parts
-    if (pathParts.length > 3) {
-      return `.../${displayParts.join('/')}`;
-    }
-    return displayParts.join('/');
   };
 
   if (permissionGranted === null) {
@@ -195,20 +245,29 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
       activeOpacity={0.7}
     >
       <View style={styles.itemContent}>
-        <View style={[
-          styles.iconContainer,
-          { 
-            backgroundColor: item.isFile 
-              ? theme.colors.primary + '20' 
-              : theme.colors.accent + '20' 
-          }
-        ]}>
-          <Icon 
-            name={item.isFile ? 'video-file' : 'folder'} 
-            size={24} 
-            color={item.isFile ? theme.colors.primary : theme.colors.accent} 
-          />
-        </View>
+        {item.isFile ? (
+          <View style={[
+            styles.iconContainer,
+            { backgroundColor: theme.colors.accent + '20' }
+          ]}>
+            <Icon 
+              name="play-circle" 
+              size={32} 
+              color={theme.colors.accent} 
+            />
+          </View>
+        ) : (
+          <View style={[
+            styles.iconContainer,
+            { backgroundColor: theme.colors.accent + '20' }
+          ]}>
+            <Icon 
+              name="folder" 
+              size={32} 
+              color={theme.colors.accent} 
+            />
+          </View>
+        )}
         
         <View style={styles.itemTextContainer}>
           <Text 
@@ -219,7 +278,10 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
           {item.isFile && (
             <Text style={[styles.itemSubtitle, { color: theme.colors.textSecondary }]}>
-              Video file
+              {selectedFilter === 'fileSize' && (item.fileSize ? `${item.fileSize}` : 'Loading...')}
+              {selectedFilter === 'lastModified' && (item.lastModified ? `${item.lastModified}` : 'Unknown')}
+              {selectedFilter === 'resolution' && (item.resolution ? `${item.resolution}` : 'Unknown')}
+              {selectedFilter === 'duration' && (item.duration ? `${item.duration}` : 'Unknown')}
             </Text>
           )}
         </View>
@@ -233,39 +295,6 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Enhanced Path Navigation Bar */}
-      <View style={[
-        styles.navigationBar,
-        { 
-          backgroundColor: theme.colors.surface,
-          borderBottomColor: theme.colors.border,
-        }
-      ]}>
-        <View style={styles.navigationContent}>
-          <TouchableOpacity
-            onPress={navigateToRoot}
-            style={[styles.navButton, { backgroundColor: theme.colors.primary + '20' }]}
-          >
-            <Icon name="home" size={20} color={theme.colors.primary} />
-          </TouchableOpacity>
-          
-          {pathHistory.length > 0 && (
-            <TouchableOpacity
-              onPress={navigateBack}
-              style={[styles.navButton, { backgroundColor: theme.colors.primary + '20' }]}
-            >
-              <Icon name="arrow-back" size={20} color={theme.colors.primary} />
-            </TouchableOpacity>
-          )}
-          
-          <View style={styles.pathContainer}>
-            <Text style={[styles.pathText, { color: theme.colors.text }]} numberOfLines={1}>
-              {getPathDisplay()}
-            </Text>
-          </View>
-        </View>
-      </View>
-
       {/* Content */}
       {currentItems.length === 0 ? (
         <EmptyState
@@ -283,6 +312,122 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation }) => {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       )}
+
+      {/* Filters Modal */}
+      <Modal
+        visible={showFiltersModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowFiltersModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Display Options</Text>
+              <TouchableOpacity
+                onPress={() => setShowFiltersModal(false)}
+                style={styles.closeButton}
+              >
+                <Icon name="close" size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.filterOptions}>
+              <TouchableOpacity
+                style={[
+                  styles.filterOption,
+                  selectedFilter === 'fileSize' && { backgroundColor: theme.colors.primary + '20' }
+                ]}
+                onPress={() => {
+                  setSelectedFilter('fileSize');
+                  setShowFiltersModal(false);
+                }}
+              >
+                <Icon 
+                  name="storage" 
+                  size={20} 
+                  color={selectedFilter === 'fileSize' ? theme.colors.primary : theme.colors.textSecondary} 
+                />
+                <Text style={[
+                  styles.filterOptionText,
+                  { color: selectedFilter === 'fileSize' ? theme.colors.primary : theme.colors.text }
+                ]}>
+                  File Size
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterOption,
+                  selectedFilter === 'lastModified' && { backgroundColor: theme.colors.primary + '20' }
+                ]}
+                onPress={() => {
+                  setSelectedFilter('lastModified');
+                  setShowFiltersModal(false);
+                }}
+              >
+                <Icon 
+                  name="schedule" 
+                  size={20} 
+                  color={selectedFilter === 'lastModified' ? theme.colors.primary : theme.colors.textSecondary} 
+                />
+                <Text style={[
+                  styles.filterOptionText,
+                  { color: selectedFilter === 'lastModified' ? theme.colors.primary : theme.colors.text }
+                ]}>
+                  Last Modified
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterOption,
+                  selectedFilter === 'resolution' && { backgroundColor: theme.colors.primary + '20' }
+                ]}
+                onPress={() => {
+                  setSelectedFilter('resolution');
+                  setShowFiltersModal(false);
+                }}
+              >
+                <Icon 
+                  name="aspect-ratio" 
+                  size={20} 
+                  color={selectedFilter === 'resolution' ? theme.colors.primary : theme.colors.textSecondary} 
+                />
+                <Text style={[
+                  styles.filterOptionText,
+                  { color: selectedFilter === 'resolution' ? theme.colors.primary : theme.colors.text }
+                ]}>
+                  Resolution
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterOption,
+                  selectedFilter === 'duration' && { backgroundColor: theme.colors.primary + '20' }
+                ]}
+                onPress={() => {
+                  setSelectedFilter('duration');
+                  setShowFiltersModal(false);
+                }}
+              >
+                <Icon 
+                  name="timer" 
+                  size={20} 
+                  color={selectedFilter === 'duration' ? theme.colors.primary : theme.colors.textSecondary} 
+                />
+                <Text style={[
+                  styles.filterOptionText,
+                  { color: selectedFilter === 'duration' ? theme.colors.primary : theme.colors.text }
+                ]}>
+                  Duration
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -319,30 +464,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  navigationBar: {
-    borderBottomWidth: 1,
-    paddingVertical: 16,
-  },
-  navigationContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  navButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  pathContainer: {
-    flex: 1,
-  },
-  pathText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
   listContainer: {
     padding: 16,
   },
@@ -364,12 +486,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 20,
   },
   itemTextContainer: {
     flex: 1,
@@ -382,6 +504,50 @@ const styles = StyleSheet.create({
   itemSubtitle: {
     fontSize: 14,
     marginTop: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  filterOptions: {
+    gap: 12,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  filterOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

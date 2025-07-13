@@ -45,6 +45,16 @@ const HeaderButtons = ({ navigation }: { navigation: any }) => {
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.headerButton, { backgroundColor: theme.colors.primary + '20' }]}
+        onPress={() => {
+          // Open filters modal
+          navigation.navigate('MediaLibrary', { showFilters: true });
+        }}
+        activeOpacity={0.7}
+      >
+        <Icon name="filter-list" size={20} color={theme.colors.primary} />
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.headerButton, { backgroundColor: theme.colors.primary + '20' }]}
         onPress={() => navigation.navigate('Settings')}
         activeOpacity={0.7}
       >
@@ -59,11 +69,15 @@ const App = () => {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // Initialize brightness manager and start periodic syncing
-    brightnessManager.startPeriodicSync();
-    
-    // Ensure status bar is visible for non-video screens
-    StatusBar.setHidden(false);
+    const initializeApp = async () => {
+      // Initialize brightness manager and start periodic syncing
+      brightnessManager.startPeriodicSync();
+      
+      // Ensure status bar is visible for non-video screens
+      StatusBar.setHidden(false);
+    };
+
+    initializeApp();
     
     return () => {
       // Cleanup brightness manager
@@ -146,9 +160,16 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
               title: 'Power Player',
               headerRight: () => <HeaderButtons navigation={navigation} />,
               headerLeft: () => (
-                <View style={styles.headerLeft}>
-                  <Icon name="video-library" size={24} color={theme.colors.primary} />
-                </View>
+                <TouchableOpacity
+                  style={[styles.headerButton, { backgroundColor: theme.colors.primary + '20' }]}
+                  onPress={() => {
+                    // Navigate to root directory by passing a reset parameter
+                    navigation.navigate('MediaLibrary', { resetToRoot: true });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="home" size={20} color={theme.colors.primary} />
+                </TouchableOpacity>
               ),
             })}
           />
@@ -192,9 +213,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 8,
   },
-  headerLeft: {
-    marginLeft: 16,
-  },
+
 });
 
 export default App;

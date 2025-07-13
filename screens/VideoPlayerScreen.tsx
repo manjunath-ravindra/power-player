@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Alert, Dimensions, StatusBar, Animated, Modal, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Alert, Dimensions, StatusBar, Animated, Modal, ActivityIndicator, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
 import Video, { SelectedTrack, SelectedTrackType } from 'react-native-video';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -12,6 +12,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import brightnessManager from '../utils/brightnessManager';
+import SystemNavigationBar from 'react-native-system-navigation-bar';
 
 export type VideoListItem = { path: string; name: string };
 export type RootStackParamList = {
@@ -136,6 +137,17 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [paused, controlsVisible, controlsManuallyToggled, settings.controlTimeout]);
 
+  // On mount, ensure immersive mode is set if controls are hidden
+  React.useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (!controlsVisible) {
+        SystemNavigationBar.immersive();
+      } else {
+        SystemNavigationBar.navigationShow();
+      }
+    }
+  }, [controlsVisible]);
+
   // Tap to show/hide controls - now works on entire screen except control areas
   const handleOverlayPress = () => {
     if (controlsVisible) {
@@ -147,6 +159,10 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
         useNativeDriver: true,
       }).start();
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+      // Hide navigation bar on Android
+      if (Platform.OS === 'android') {
+        SystemNavigationBar.immersive();
+      }
     } else {
       setControlsVisible(true);
       setControlsManuallyToggled(false);
@@ -156,6 +172,10 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
         useNativeDriver: true,
       }).start();
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+      // Show navigation bar on Android
+      if (Platform.OS === 'android') {
+        SystemNavigationBar.navigationShow();
+      }
     }
   };
 
@@ -408,10 +428,19 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
     <SafeAreaView style={[styles.container, { backgroundColor: '#000' }]} edges={isLandscape ? ['top'] : ['top', 'left', 'right']}>
       {/* Header Controls */}
       <Animated.View
-        style={[styles.headerContainer, { opacity: controlsOpacity, top: isLandscape ? 0 : 32 }]}
+        style={[
+          styles.headerContainer,
+          { opacity: controlsOpacity, top: isLandscape ? 0 : 32 },
+          isLandscape && { paddingTop: 0, paddingBottom: 0 },
+        ]}
         pointerEvents={controlsVisible ? 'auto' : 'none'}
       >
-        <View style={styles.headerContent}>
+        <View
+          style={[
+            styles.headerContent,
+            isLandscape && { marginHorizontal: 0, borderRadius: 0, paddingVertical: 8 },
+          ]}
+        >
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Icon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
@@ -506,7 +535,11 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
       
       {/* Enhanced Controls Container */}
       <Animated.View
-        style={[styles.controlsContainer, { opacity: controlsOpacity }]}
+        style={[
+          styles.controlsContainer,
+          { opacity: controlsOpacity },
+          isLandscape && { left: 0, right: 0, bottom: 0, borderRadius: 0, padding: 8 },
+        ]}
         pointerEvents={controlsVisible ? 'auto' : 'none'}
       >
         {/* Progress Bar */}

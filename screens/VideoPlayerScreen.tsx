@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Alert, Dimensions, StatusBar, Animated } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Alert, Dimensions, StatusBar, Animated, Modal } from 'react-native';
 import Slider from '@react-native-community/slider';
-import Video from 'react-native-video';
+import Video, { SelectedTrack, SelectedTrackType } from 'react-native-video';
 import { StackScreenProps } from '@react-navigation/stack';
 import type { AppStackParamList } from '../App';
 import GestureOverlay from '../components/GestureOverlay';
@@ -45,6 +45,11 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
   const [controlsManuallyToggled, setControlsManuallyToggled] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [videoBounds, setVideoBounds] = useState<{x: number, y: number, width: number, height: number} | undefined>(undefined);
+  const [subtitlesModalVisible, setSubtitlesModalVisible] = useState(false);
+  const [availableSubtitles, setAvailableSubtitles] = useState<string[]>(['None']); // Placeholder, will be populated from video metadata
+  const [selectedSubtitle, setSelectedSubtitle] = useState<string>('None');
+  const [textTracks, setTextTracks] = useState<any[]>([]); // Store full textTracks from video
+  const [subtitleLabels, setSubtitleLabels] = useState<string[]>(['None']); // Unique labels for modal
 
   // Animation values for smooth transitions
   const controlsOpacity = useRef(new Animated.Value(1)).current;
@@ -272,6 +277,21 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
         StatusBar.setHidden(false);
       }
     }
+    // Store textTracks for subtitle support
+    if (data.textTracks && data.textTracks.length > 0) {
+      setTextTracks(data.textTracks);
+      // Generate unique, user-friendly labels
+      const labels = data.textTracks.map((t: any, i: number) => {
+        if (t.title && t.title.trim()) return t.title;
+        if (t.language && t.language.trim()) return t.language;
+        return `Embedded ${i + 1}`;
+      });
+      setSubtitleLabels(['None', ...labels]);
+    } else {
+      setTextTracks([]);
+      setSubtitleLabels(['None']);
+    }
+    setSelectedSubtitle('None'); // Reset selection on new video
   };
 
   // Calculate video bounds when video dimensions change
@@ -332,10 +352,19 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
     return areas;
   };
 
+  // Map selectedSubtitle to selectedTextTrack prop using index
+  let selectedTextTrack: SelectedTrack = { type: SelectedTrackType.DISABLED };
+  if (selectedSubtitle !== 'None' && textTracks.length > 0) {
+    const idx = subtitleLabels.findIndex(s => s === selectedSubtitle) - 1; // -1 because 'None' is first
+    if (idx >= 0) {
+      selectedTextTrack = { type: SelectedTrackType.INDEX, value: idx };
+    }
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#000' }]} edges={isLandscape ? ['top'] : ['top', 'left', 'right']}>
       {/* Header Controls */}
-      <Animated.View style={[styles.headerContainer, { opacity: controlsOpacity }]}>
+      <Animated.View style={[styles.headerContainer, { opacity: controlsOpacity, top: isLandscape ? 0 : 32 }]}>
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Icon name="arrow-back" size={24} color="#fff" />
@@ -345,6 +374,10 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={styles.speedBadge}>
               <Text style={styles.speedText}>{SPEEDS[speedIndex]}x</Text>
             </View>
+          </TouchableOpacity>
+          {/* Subtitles Button */}
+          <TouchableOpacity style={styles.subtitlesButton} onPress={() => setSubtitlesModalVisible(true)}>
+            <Icon name="subtitles" size={28} color={selectedSubtitle !== 'None' ? theme.colors.primary : '#fff'} />
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -370,6 +403,8 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
             onProgress={e => setCurrentTime(e.currentTime)}
             onLoad={handleVideoLoad}
             rate={SPEEDS[speedIndex]}
+            textTracks={textTracks}
+            selectedTextTrack={selectedTextTrack}
           />
         </View>
         
@@ -473,6 +508,36 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </Animated.View>
+      {/* Subtitles Modal */}
+      <Modal
+        visible={subtitlesModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSubtitlesModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          {/* TouchableOpacity to close modal when clicking outside content */}
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setSubtitlesModalVisible(false)} />
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Select Subtitles</Text>
+            {subtitleLabels.map((label, idx) => (
+              <TouchableOpacity
+                key={label + idx}
+                style={[styles.subtitleOption, selectedSubtitle === label && styles.selectedSubtitleOption]}
+                onPress={() => {
+                  setSelectedSubtitle(label);
+                  setSubtitlesModalVisible(false);
+                }}
+              >
+                <Text style={{ color: selectedSubtitle === label ? theme.colors.primary : theme.colors.text }}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.closeModalButton} onPress={() => setSubtitlesModalVisible(false)}>
+              <Text style={{ color: theme.colors.text }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -683,6 +748,58 @@ const styles = StyleSheet.create({
     zIndex: 10, 
     justifyContent: 'center', 
     transform: [{ translateY: -50 }] 
+  },
+  subtitlesButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
+  },
+  modalContent: {
+    width: '65%',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  subtitleOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  selectedSubtitleOption: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+  },
+  closeModalButton: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
 });
 

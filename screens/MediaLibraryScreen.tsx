@@ -207,11 +207,18 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
                 }
                 // Fetch video duration using react-native-media-meta
                 let durationMs: number | null = null;
+                let resolution: string | undefined = undefined;
                 try {
                   const meta = await MediaMeta.get(item.path);
                   durationMs = meta.duration ?? null;
+                  if (meta.width && meta.height) {
+                    resolution = `${meta.width}x${meta.height}`;
+                  } else {
+                    resolution = 'Unknown';
+                  }
                 } catch (metaErr) {
                   durationMs = null;
+                  resolution = 'Unknown';
                 }
                 videos.push({
                   name: item.name,
@@ -219,7 +226,7 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
                   isFile: true,
                   fileSize,
                   lastModified,
-                  resolution: 'Unknown',
+                  resolution,
                   duration: formatDuration(durationMs),
                   thumbnailUri,
                 });
@@ -407,45 +414,82 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             {item.name}
           </Text>
-          {item.isFile &&
-            (selectedFilter === 'fileSize' ? (
-              <View
-                style={[
-                  styles.pill,
-                  {
-                    backgroundColor:
-                      theme.mode === 'dark'
-                        ? theme.colors.primaryLight + '55'
-                        : theme.colors.primary + '22',
-                    borderRadius: styles.pill.borderRadius,
-                  },
-                ]}
-              >
-                <Text
+          {item.isFile && (
+            <>
+              {selectedFilter === 'fileSize' && (
+                <View
                   style={[
-                    styles.itemSubtitle,
-                    styles.pillText,
-                    { color: theme.colors.primary },
+                    styles.pill,
+                    {
+                      backgroundColor:
+                        theme.mode === 'dark'
+                          ? theme.colors.primaryLight + '55'
+                          : theme.colors.primary + '22',
+                      borderRadius: styles.pill.borderRadius,
+                    },
                   ]}
                 >
-                  {item.fileSize ? `${item.fileSize}` : 'Loading...'}
-                </Text>
-              </View>
-            ) : (
-              <Text
-                style={[
-                  styles.itemSubtitle,
-                  { color: theme.colors.textSecondary, fontWeight: '700' },
-                ]}
-              >
-                {selectedFilter === 'lastModified' &&
-                  (item.lastModified ? `${item.lastModified}` : 'Unknown')}
-                {selectedFilter === 'resolution' &&
-                  (item.resolution ? `${item.resolution}` : 'Unknown')}
-                {selectedFilter === 'duration' &&
-                  (item.duration ? `${item.duration}` : 'Unknown')}
-              </Text>
-            ))}
+                  <Text
+                    style={[
+                      styles.itemSubtitle,
+                      styles.pillText,
+                      { color: theme.colors.primary },
+                    ]}
+                  >
+                    {item.fileSize ? `${item.fileSize}` : 'Loading...'}
+                  </Text>
+                </View>
+              )}
+              {selectedFilter === 'lastModified' && (
+                <View
+                  style={[
+                    styles.pill,
+                    {
+                      backgroundColor:
+                        theme.mode === 'dark'
+                          ? theme.colors.primaryLight + '55'
+                          : theme.colors.primary + '22',
+                      borderRadius: styles.pill.borderRadius,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.itemSubtitle,
+                      styles.pillText,
+                      { color: theme.colors.primary },
+                    ]}
+                  >
+                    {item.lastModified ? `${item.lastModified}` : 'Unknown'}
+                  </Text>
+                </View>
+              )}
+              {selectedFilter === 'resolution' && (
+                <View
+                  style={[
+                    styles.pill,
+                    {
+                      backgroundColor:
+                        theme.mode === 'dark'
+                          ? theme.colors.primaryLight + '55'
+                          : theme.colors.primary + '22',
+                      borderRadius: styles.pill.borderRadius,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.itemSubtitle,
+                      styles.pillText,
+                      { color: theme.colors.primary },
+                    ]}
+                  >
+                    {item.resolution ? `${item.resolution}` : 'Unknown'}
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
         </View>
 
         {!item.isFile && (
@@ -628,42 +672,6 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
                   ]}
                 >
                   Resolution
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.filterOption,
-                  selectedFilter === 'duration' && {
-                    backgroundColor: theme.colors.primary + '20',
-                  },
-                ]}
-                onPress={() => {
-                  setSelectedFilter('duration');
-                  setShowFiltersModal(false);
-                }}
-              >
-                <Icon
-                  name="timer"
-                  size={20}
-                  color={
-                    selectedFilter === 'duration'
-                      ? theme.colors.primary
-                      : theme.colors.textSecondary
-                  }
-                />
-                <Text
-                  style={[
-                    styles.filterOptionText,
-                    {
-                      color:
-                        selectedFilter === 'duration'
-                          ? theme.colors.primary
-                          : theme.colors.text,
-                    },
-                  ]}
-                >
-                  Duration
                 </Text>
               </TouchableOpacity>
             </View>

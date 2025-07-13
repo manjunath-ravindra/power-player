@@ -1,0 +1,345 @@
+# Power Player - React Native Video Player App
+
+## Project Overview
+This is a React Native video player application with advanced gesture controls, volume/brightness adjustment, and customizable settings. The app supports both portrait and landscape orientations with different gesture behaviors.
+
+## Architecture & Structure
+
+### Core Components
+- **VideoPlayerScreen**: Main video player with gesture controls and UI
+- **GestureOverlay**: Handles all touch gestures (tap, double-tap, pan, swipe)
+- **MediaLibraryScreen**: File browser for video selection with breadcrumb navigation
+- **SettingsScreen**: App configuration and gesture sensitivity settings
+- **ThemeContext**: Dark/light theme management
+- **SettingsContext**: Global settings state management
+- **BrightnessManager**: System brightness synchronization utility
+
+### Key Features
+- Double-tap controls: 1/3 width divisions for rewind/play-pause/fast-forward
+- Single-tap: Toggle video player controls visibility
+- Vertical swipe gestures: Volume (right side) and brightness (left side) control
+- Horizontal swipe: Seek through video
+- Orientation-aware gesture behavior
+- Auto-hide controls after 3 seconds
+- Visual feedback for all gesture actions
+- Automatic system brightness synchronization
+- Breadcrumb-style folder navigation
+
+## Coding Standards
+
+### TypeScript
+- Use strict TypeScript with proper type definitions
+- Define interfaces for all component props
+- Use React.FC for functional components
+- Prefer type over interface for simple object types
+
+### React Native Patterns
+- Use functional components with hooks
+- Prefer useRef for mutable values that don't trigger re-renders
+- Use useState for state that affects UI
+- Use useEffect for side effects and cleanup
+- Always provide cleanup functions in useEffect
+
+### Gesture Handling
+- Use react-native-gesture-handler for all touch interactions
+- Implement gesture state management (BEGAN, ACTIVE, END)
+- Provide visual feedback for all gesture actions
+- Exclude control areas from gesture detection
+- Use percentage-based calculations for responsive layouts
+
+### State Management
+- Use React Context for global state (theme, settings)
+- Keep component state local when possible
+- Use refs for values that don't need re-renders
+- Implement proper cleanup for timeouts and subscriptions
+
+## File Organization
+
+### Components
+- Place reusable components in `/components/`
+- Screen components go in `/screens/`
+- Context providers in `/settings/` and `/theme/`
+- Utility functions in `/utils/`
+
+### Naming Conventions
+- Components: PascalCase (e.g., VideoPlayerScreen)
+- Files: PascalCase for components, camelCase for utilities
+- Functions: camelCase
+- Constants: UPPER_SNAKE_CASE
+- Types/Interfaces: PascalCase
+
+## Dependencies & Libraries
+
+### Core Dependencies
+- react-native-video: Video playback
+- react-native-gesture-handler: Touch gestures
+- react-native-system-setting: System volume/brightness control
+- react-native-orientation-locker: Screen orientation management
+- @react-native-community/slider: Progress bar
+- react-native-vector-icons: UI icons
+- react-native-safe-area-context: Safe area handling
+- react-native-fs: File system operations
+- @react-navigation/native: Navigation framework
+- @react-navigation/stack: Stack navigation
+
+### Development Dependencies
+- TypeScript for type safety
+- Jest for testing
+- Metro for bundling
+
+## Gesture Implementation Guidelines
+
+### Double-Tap Controls
+- Always use 1/3 width divisions for consistent UX
+- Left third: Rewind functionality
+- Middle third: Play/pause toggle
+- Right third: Fast forward functionality
+- Provide visual feedback with seek feedback overlays
+- Works in both portrait and landscape modes
+
+### Single-Tap Behavior
+- Toggle video player controls visibility
+- Exclude control areas (buttons, progress bar, top bar)
+- Auto-hide controls after 3 seconds of inactivity
+- Work on entire screen except excluded areas
+
+### Vertical Swipe Gestures
+- Right side: Volume control (if enabled in settings)
+- Left side: Brightness control (if enabled in settings)
+- Use gesture state management for smooth interactions
+- Provide real-time visual feedback
+- Respect sensitivity settings from user preferences
+
+### Horizontal Swipe
+- Seek through video timeline
+- Use sensitivity settings from user preferences
+- Provide immediate visual feedback
+
+## UI/UX Guidelines
+
+### Visual Feedback
+- Always provide feedback for gesture actions
+- Use consistent styling for feedback overlays
+- Position feedback appropriately (left/right based on action)
+- Use icons for volume and brightness feedback
+- Show time-based feedback for seek actions
+
+### Control Visibility
+- Auto-hide controls after 3 seconds
+- Show controls on any interaction
+- Provide smooth transitions
+- Ensure controls don't interfere with gestures
+
+### Responsive Design
+- Use percentage-based calculations for gesture areas
+- Adapt to different screen sizes and orientations
+- Handle safe areas properly
+- Support both portrait and landscape modes
+
+## Performance Considerations
+
+### Video Performance
+- Use proper video source URIs (file:// protocol for local files)
+- Implement proper cleanup on component unmount
+- Handle video loading states
+- Optimize video dimensions calculation
+
+### Gesture Performance
+- Use refs for gesture state to avoid re-renders
+- Implement proper gesture cleanup
+- Avoid expensive calculations in gesture handlers
+- Use requestAnimationFrame for smooth animations
+
+### Memory Management
+- Clear timeouts and intervals on cleanup
+- Unsubscribe from orientation listeners
+- Restore system settings on unmount
+- Handle component unmounting properly
+
+## Brightness Management System
+
+### BrightnessManager Class
+- **Singleton pattern**: One instance manages brightness across the entire app
+- **State tracking**: Knows when user is in video player vs other screens
+- **Periodic syncing**: Checks system brightness every 2 seconds when not in video player
+- **App state monitoring**: Responds to app becoming active/inactive
+- **Memory management**: Proper cleanup of listeners and intervals
+
+### Key Methods
+- `enterVideoPlayer()`: Stops syncing, stores current brightness
+- `exitVideoPlayer()`: Restores system brightness, resumes syncing
+- `startPeriodicSync()`: Begins 2-second interval checks
+- `stopPeriodicSync()`: Stops periodic checks
+- `cleanup()`: Removes all listeners and intervals
+
+### System Integration
+- **Outside video player**: App brightness automatically follows system brightness
+- **In video player**: User has full control via gesture controls
+- **App state changes**: Syncs when app becomes active
+- **Battery efficient**: Stops syncing when app is backgrounded
+
+### react-native-system-setting Limitations
+- **No brightness listener**: `addBrightnessListener()` method doesn't exist
+- **Available methods**: `getBrightness()`, `setBrightness()`, `getAppBrightness()`, `setAppBrightness()`
+- **Workaround**: Use periodic checking with `setInterval()` every 2 seconds
+- **App state monitoring**: Use `AppState.addEventListener()` for app lifecycle events
+
+## Folder Navigation System
+
+### Breadcrumb Navigation
+- **Path display**: Shows current location with truncation for long paths
+- **Navigation controls**: Home button (root), back button (previous folder)
+- **Real-time loading**: Loads directory contents as user navigates
+- **Smart filtering**: Only shows folders that contain videos
+
+### File System Operations
+- **Permission handling**: Supports both Android 12+ and older versions
+- **Video detection**: Checks for common video file extensions
+- **Error handling**: Graceful handling of inaccessible folders
+- **Performance**: Only scans directories when needed
+
+### User Experience
+- **Intuitive navigation**: Like a file manager app
+- **Visual hierarchy**: Clear distinction between folders and videos
+- **Quick access**: Home button for instant root navigation
+- **Context awareness**: Always know current location
+
+## Testing Guidelines
+
+### Component Testing
+- Test gesture handlers with different scenarios
+- Verify orientation changes work correctly
+- Test settings persistence
+- Verify cleanup functions work properly
+
+### Integration Testing
+- Test gesture interactions with video playback
+- Verify settings affect gesture behavior
+- Test theme switching
+- Verify file navigation works correctly
+- Test brightness synchronization across screens
+
+## Common Patterns
+
+### Gesture Handler Pattern
+```typescript
+const handleGesture = (event: any) => {
+  const { state, x, y } = event.nativeEvent;
+  
+  if (state === GestureState.BEGAN) {
+    // Initialize gesture
+  } else if (state === GestureState.ACTIVE) {
+    // Handle active gesture
+  } else if (state === GestureState.END) {
+    // Cleanup gesture
+  }
+};
+```
+
+### Feedback Pattern
+```typescript
+const [feedback, setFeedback] = useState<string | null>(null);
+const feedbackTimeout = useRef<NodeJS.Timeout | null>(null);
+
+const showFeedback = (message: string) => {
+  setFeedback(message);
+  if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current);
+  feedbackTimeout.current = setTimeout(() => setFeedback(null), 800);
+};
+```
+
+### Cleanup Pattern
+```typescript
+React.useEffect(() => {
+  // Setup code
+  
+  return () => {
+    // Cleanup code
+    if (timeout.current) clearTimeout(timeout.current);
+  };
+}, []);
+```
+
+### Brightness Manager Pattern
+```typescript
+// In VideoPlayerScreen
+useEffect(() => {
+  brightnessManager.enterVideoPlayer();
+  return () => brightnessManager.exitVideoPlayer();
+}, []);
+
+// In App.tsx
+useEffect(() => {
+  brightnessManager.startPeriodicSync();
+  return () => brightnessManager.cleanup();
+}, []);
+```
+
+## Error Handling
+
+### Gesture Errors
+- Handle gesture failures gracefully
+- Provide fallback behavior
+- Log errors for debugging
+- Don't crash on gesture errors
+
+### Video Errors
+- Handle video loading failures
+- Provide user feedback for errors
+- Implement retry mechanisms
+- Handle unsupported video formats
+
+### System Integration Errors
+- Handle permission denials gracefully
+- Provide fallbacks for system settings
+- Handle orientation lock failures
+- Graceful degradation for unsupported features
+
+### Brightness Errors
+- Handle system brightness access failures
+- Provide fallback to app brightness only
+- Log errors for debugging
+- Continue app functionality even if brightness sync fails
+
+## Accessibility
+
+### Gesture Accessibility
+- Provide alternative controls for gesture-only features
+- Support screen readers
+- Provide haptic feedback where appropriate
+- Ensure controls are discoverable
+
+### Video Accessibility
+- Support closed captions
+- Provide audio descriptions
+- Support keyboard navigation
+- Ensure proper contrast ratios
+
+### Navigation Accessibility
+- Provide clear visual indicators for current location
+- Support screen readers for folder navigation
+- Ensure touch targets are appropriately sized
+- Provide alternative navigation methods
+
+## Future Considerations
+
+### Planned Features
+- Picture-in-picture support
+- Background playback
+- Custom gesture mappings
+- Advanced video filters
+- Network streaming support
+- Real-time brightness listener (if library adds support)
+
+### Scalability
+- Modular gesture system
+- Plugin architecture for new features
+- Performance monitoring
+- Analytics integration
+- Enhanced brightness management with native listeners
+
+### Library Dependencies
+- Monitor react-native-system-setting for new brightness listener support
+- Consider alternative brightness management libraries if needed
+- Keep dependencies updated for security and performance
+- Document any library limitations and workarounds 

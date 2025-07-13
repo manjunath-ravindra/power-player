@@ -330,13 +330,24 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
         {item.isFile ? (
           <View style={styles.iconContainer}>
             {item.thumbnailUri ? (
-              <Image
-                source={{ uri: item.thumbnailUri }}
-                style={{ width: 160, height: 98, borderRadius: 16 }}
-                resizeMode="cover"
-              />
+              <>
+                <Image
+                  source={{ uri: item.thumbnailUri }}
+                  style={{ width: 160, height: 98, borderRadius: 16 }}
+                  resizeMode="cover"
+                />
+                {item.duration && (
+                  <View style={styles.durationLabel}>
+                    <Text style={styles.durationText}>{item.duration}</Text>
+                  </View>
+                )}
+              </>
             ) : (
-              <Icon name="play-circle" size={120} color={theme.colors.primary} />
+              <Icon
+                name="play-circle"
+                size={120}
+                color={theme.colors.primary}
+              />
             )}
           </View>
         ) : (
@@ -696,6 +707,21 @@ const styles = StyleSheet.create({
   filterOptionText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  durationLabel: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    zIndex: 2,
+  },
+  durationText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 

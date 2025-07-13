@@ -42,7 +42,7 @@ const HeaderButtons = ({ navigation }: { navigation: any }) => {
       >
         <Icon 
           name={theme.mode === 'light' ? 'dark-mode' : 'light-mode'} 
-          size={20} 
+          size={28} 
           color={theme.colors.primary} 
         />
       </TouchableOpacity>
@@ -54,14 +54,14 @@ const HeaderButtons = ({ navigation }: { navigation: any }) => {
         }}
         activeOpacity={0.7}
       >
-        <Icon name="filter-list" size={20} color={theme.colors.primary} />
+        <Icon name="filter-list" size={28} color={theme.colors.primary} />
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.headerButton}
         onPress={() => navigation.navigate('Settings')}
         activeOpacity={0.7}
       >
-        <Icon name="settings" size={20} color={theme.colors.primary} />
+        <Icon name="settings" size={28} color={theme.colors.primary} />
       </TouchableOpacity>
     </View>
   );
@@ -163,7 +163,7 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Icon name="home" size={20} color={theme.colors.primary} />
+                  <Icon name="home" size={28} color={theme.colors.primary} />
                 </TouchableOpacity>
               ),
             })}

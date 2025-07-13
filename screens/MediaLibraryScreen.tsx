@@ -11,6 +11,7 @@ import {
   Modal,
   BackHandler,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { requestStoragePermission } from '../utils/permissions';
 import { scanForVideos, FolderNode } from '../utils/videoScanner';
@@ -69,7 +70,9 @@ const formatDuration = (ms?: number | null): string => {
   const min = Math.floor((totalSec % 3600) / 60);
   const sec = totalSec % 60;
   if (hours > 0) {
-    return `${hours}:${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    return `${hours}:${min.toString().padStart(2, '0')}:${sec
+      .toString()
+      .padStart(2, '0')}`;
   } else {
     return `${min}:${sec.toString().padStart(2, '0')}`;
   }
@@ -80,6 +83,7 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
     null,
   );
   const [loading, setLoading] = useState(false);
+  const [refreshingPermission, setRefreshingPermission] = useState(false); // <-- Add this state
   const [currentItems, setCurrentItems] = useState<
     Array<FolderNode | VideoFile>
   >([]);
@@ -279,12 +283,30 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
       <View
         style={[styles.container, { backgroundColor: theme.colors.background }]}
       >
-        <EmptyState
-          title="Storage Permission Required"
-          subtitle="Please enable storage permission in settings to access your video files"
-          icon="folder-off"
-          showAnimation={false}
-        />
+        <ScrollView
+          contentContainerStyle={{ flex: 1 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshingPermission}
+              onRefresh={async () => {
+                setRefreshingPermission(true);
+                const granted = await requestStoragePermission();
+                setPermissionGranted(granted);
+                setRefreshingPermission(false);
+              }}
+              colors={[theme.colors.primary]}
+              progressBackgroundColor={theme.colors.background}
+              tintColor={theme.colors.primary}
+            />
+          }
+        >
+          <EmptyState
+            title="Storage Permission Required"
+            subtitle="Please enable storage permission in settings to access your video files"
+            icon="folder-off"
+            showAnimation={false}
+          />
+        </ScrollView>
       </View>
     );
   }
@@ -385,27 +407,53 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             {item.name}
           </Text>
-          {item.isFile && (
-            <Text
-              style={[
-                styles.itemSubtitle,
-                { color: theme.colors.textSecondary },
-              ]}
-            >
-              {selectedFilter === 'fileSize' &&
-                (item.fileSize ? `${item.fileSize}` : 'Loading...')}
-              {selectedFilter === 'lastModified' &&
-                (item.lastModified ? `${item.lastModified}` : 'Unknown')}
-              {selectedFilter === 'resolution' &&
-                (item.resolution ? `${item.resolution}` : 'Unknown')}
-              {selectedFilter === 'duration' &&
-                (item.duration ? `${item.duration}` : 'Unknown')}
-            </Text>
-          )}
+          {item.isFile &&
+            (selectedFilter === 'fileSize' ? (
+              <View
+                style={[
+                  styles.pill,
+                  {
+                    backgroundColor:
+                      theme.mode === 'dark'
+                        ? theme.colors.primaryLight + '55'
+                        : theme.colors.primary + '22',
+                    borderRadius: styles.pill.borderRadius,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.itemSubtitle,
+                    styles.pillText,
+                    { color: theme.colors.primary },
+                  ]}
+                >
+                  {item.fileSize ? `${item.fileSize}` : 'Loading...'}
+                </Text>
+              </View>
+            ) : (
+              <Text
+                style={[
+                  styles.itemSubtitle,
+                  { color: theme.colors.textSecondary, fontWeight: '700' },
+                ]}
+              >
+                {selectedFilter === 'lastModified' &&
+                  (item.lastModified ? `${item.lastModified}` : 'Unknown')}
+                {selectedFilter === 'resolution' &&
+                  (item.resolution ? `${item.resolution}` : 'Unknown')}
+                {selectedFilter === 'duration' &&
+                  (item.duration ? `${item.duration}` : 'Unknown')}
+              </Text>
+            ))}
         </View>
 
         {!item.isFile && (
-          <Icon name="chevron-right" size={20} color={theme.colors.accent} />
+          <Icon
+            name="chevron-right"
+            size={20}
+            color={theme.colors.folderIcon}
+          />
         )}
       </View>
     </TouchableOpacity>
@@ -430,6 +478,15 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={loadCurrentDirectory}
+              colors={[theme.colors.primary]}
+              progressBackgroundColor={theme.colors.background}
+              tintColor={theme.colors.primary}
+            />
+          }
         />
       )}
 
@@ -744,6 +801,18 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',
+  },
+  pill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  pillText: {
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
 

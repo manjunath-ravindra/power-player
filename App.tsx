@@ -19,9 +19,11 @@ import type { RootStackParamList } from './screens/VideoPlayerScreen';
 import { SettingsProvider } from './settings/SettingsContext';
 import brightnessManager from './utils/brightnessManager';
 import { TransitionSpecs, CardStyleInterpolators } from '@react-navigation/stack';
+import RNFS from 'react-native-fs';
+import type { MediaLibraryParamList } from './screens/MediaLibraryScreen';
 
-// Extend RootStackParamList to include Settings
-export type AppStackParamList = RootStackParamList & {
+// Extend MediaLibraryParamList to include Settings
+export type AppStackParamList = MediaLibraryParamList & {
   Settings: undefined;
 };
 
@@ -170,8 +172,7 @@ const AppContent = ({ navigationRef }: { navigationRef: any }) => {
                 <TouchableOpacity
                   style={[styles.headerButton, { backgroundColor: theme.colors.primary + '20' }]}
                   onPress={() => {
-                    // Navigate to root directory by passing a reset parameter
-                    navigation.navigate('MediaLibrary', { resetToRoot: true });
+                    navigation.push('MediaLibrary', { path: RNFS.ExternalStorageDirectoryPath });
                   }}
                   activeOpacity={0.7}
                 >

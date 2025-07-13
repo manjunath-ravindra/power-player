@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, StyleSheet, Dimensions, Modal } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, FlatList, StyleSheet, Dimensions, Modal, BackHandler } from 'react-native';
 import { requestStoragePermission } from '../utils/permissions';
 import { scanForVideos, FolderNode, VideoFile } from '../utils/videoScanner';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -68,6 +68,27 @@ const MediaLibraryScreen: React.FC<Props> = ({ navigation, route }) => {
       brightnessManager.exitVideoPlayer();
     }, [])
   );
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (currentPath !== RNFS.ExternalStorageDirectoryPath) {
+        // Go to previous folder
+        if (pathHistory.length > 0) {
+          setCurrentPath(pathHistory[pathHistory.length - 1]);
+          setPathHistory(pathHistory.slice(0, -1));
+        } else {
+          setCurrentPath(RNFS.ExternalStorageDirectoryPath);
+        }
+        return true; // Prevent default behavior (app exit)
+      } else if (navigation.canGoBack()) {
+        navigation.goBack();
+        return true;
+      }
+      return false; // Allow default behavior (app exit)
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [currentPath, pathHistory, navigation]);
 
   const loadCurrentDirectory = async () => {
     setLoading(true);

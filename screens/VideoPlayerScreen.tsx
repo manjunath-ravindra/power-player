@@ -435,8 +435,8 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
         
         {volumeFeedback && (
-          <Animated.View 
-            style={[styles.feedbackCard, styles.volumeFeedbackCard, styles.volumeFeedbackLeft]} 
+          <Animated.View
+            style={[styles.volumeFeedbackNoBg, styles.volumeFeedbackLeftFar]}
             pointerEvents="none"
           >
             <Icon name="volume-up" size={32} color="#fff" style={styles.feedbackIcon} />
@@ -445,8 +445,8 @@ const VideoPlayerScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
         
         {brightnessFeedback && (
-          <Animated.View 
-            style={[styles.feedbackCard, styles.brightnessFeedbackCard, styles.brightnessFeedbackRight]} 
+          <Animated.View
+            style={[styles.brightnessFeedbackNoBg, styles.brightnessFeedbackRightFar]}
             pointerEvents="none"
           >
             <Icon name="brightness-6" size={32} color="#fff" style={styles.feedbackIcon} />
@@ -806,6 +806,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  volumeFeedbackNoBg: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    maxWidth: 160,
+    minWidth: 120,
+    // No background, no border, no shadow
+    padding: 0,
+    borderRadius: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  brightnessFeedbackNoBg: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    maxWidth: 160,
+    minWidth: 120,
+    // No background, no border, no shadow
+    padding: 0,
+    borderRadius: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  volumeFeedbackLeftFar: {
+    position: 'absolute',
+    top: '50%',
+    left: '8%', // further from center than before
+    alignItems: 'flex-start',
+    zIndex: 10,
+    justifyContent: 'center',
+    transform: [{ translateY: -50 }],
+  },
+  brightnessFeedbackRightFar: {
+    position: 'absolute',
+    top: '50%',
+    right: '8%', // further from center than before
+    alignItems: 'flex-end',
+    zIndex: 10,
+    justifyContent: 'center',
+    transform: [{ translateY: -50 }],
   },
 });
 
